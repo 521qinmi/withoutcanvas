@@ -13,50 +13,26 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
+@CrossOrigin(origins = {
+    "https://bigdipper-pluto-4490.scratch.lightning.force.com/",
+    "https://bigdipper-pluto-4490.scratch.my.salesforce.com"
+})
 public class ApiController {
     private static final Logger logger = LoggerFactory.getLogger(ApiController.class);
     
-    @GetMapping("/test")
-    public ResponseEntity<?> test() {
-        logger.info("Test API called");
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("status", "success");
-        response.put("message", "Java API is working");
-        response.put("timestamp", System.currentTimeMillis());
-        response.put("server", "railway");
-        
-        return ResponseEntity.ok(response);
+    private final SalesforceApiService salesforceApiService;
+    private final SalesforceOAuthClient oauthClient;
+    
+    public ApiController(SalesforceApiService salesforceApiService, 
+                        SalesforceOAuthClient oauthClient) {
+        this.salesforceApiService = salesforceApiService;
+        this.oauthClient = oauthClient;
     }
     
-    @GetMapping("/health")
-    public ResponseEntity<?> health() {
-        return ResponseEntity.ok(Map.of(
-            "status", "UP",
-            "timestamp", System.currentTimeMillis()
-        ));
-    }
-
-    /*
-    @GetMapping("/account/{id}")
-    public ResponseEntity<?> getAccount(@PathVariable String id) {
-        logger.info("Get account: {}", id);
-        
-        Map<String, Object> account = new HashMap<>();
-        account.put("Id", id);
-        account.put("Name", "测试公司");
-        account.put("Phone", "010-12345678");
-        account.put("Website", "www.example.com");
-        account.put("Industry", "Technology");
-        account.put("Description", "从Java应用返回的数据");
-        
-        return ResponseEntity.ok(account);
-    }
-    */
     @GetMapping("/account/{id}")
     public ResponseEntity<?> getAccount(@PathVariable String id) {
         try {
-            logger.info("获取Account信息: {}", id);
+            logger.info("Get Account Info: {}", id);
             JsonNode account = salesforceApiService.getAccountById(id);
             return ResponseEntity.ok(account);
         } catch (Exception e) {
@@ -64,29 +40,79 @@ public class ApiController {
             return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
         }
     }
-    @PostMapping("/message")
-    public ResponseEntity<?> receiveMessage(@RequestBody Map<String, Object> message) {
-        logger.info("Received message: {}", message);
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("status", "received");
-        response.put("messageId", System.currentTimeMillis());
-        response.put("original", message);
-        
-        return ResponseEntity.ok(response);
+    
+    @PostMapping("/task")
+    public ResponseEntity<?> createTask(@RequestBody Map<String, Object> taskData) {
+        try {
+            logger.info("Create Task: {}", taskData);
+            
+            String jsonBody = String.format(
+                "{\"Subject\":\"%s\", \"WhatId\":\"%s\", \"Status\":\"%s\"}",
+                taskData.get("subject"),
+                taskData.get("whatId"),
+                taskData.get("status")
+            );
+            
+            JsonNode result = salesforceApiService.createRecord("Task", jsonBody);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            logger.error("Create Task Failure", e);
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
     }
     
-    @GetMapping("/debug")
-    public ResponseEntity<?> debug() {
-        Map<String, Object> debug = new HashMap<>();
-        debug.put("timestamp", System.currentTimeMillis());
-        debug.put("javaVersion", System.getProperty("java.version"));
-        debug.put("os", System.getProperty("os.name"));
-        debug.put("availableEndpoints", new String[]{"/api/test", "/api/health", "/api/account/{id}", "/api/message", "/api/debug"});
+    @PatchMapping("/account/{id}")
+    public ResponseEntity<?> updateAccount(@PathVariable String id, 
+                                          @RequestBody Map<String, Object> updateData) {
+        try {
+            logger.info("Update Account: {}, data: {}", id, updateData);
+            
+            // 构建更新字段
+            StringBuilder fields = new StringBuilder("{");
+            for (Map.Entry<String, Object> entry : updateData.entrySet()) {
+                if (fields.length() > 1) fields.append(",");
+                fields.append(String.format("\"%s\":\"%s\"", entry.getKey(), entry.getValue()));
+            }
+            fields.append("}");
+            
+            JsonNode result = salesforceApiService.updateRecord("Account", id, fields.toString());
+            return ResponseEntity.ok(Map.of("success", true, "id", id));
+        } catch (Exception e) {
+            logger.error("Update Account Failure", e);
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    @PostMapping("/token/refresh")
+    public ResponseEntity<?> refreshToken() {
+        try {
+            oauthClient.clearTokenCache();
+            var token = oauthClient.getAccessToken();
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "expiresIn", token.getExpiresIn()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    @GetMapping("/health")
+    public ResponseEntity<?> health() {
+        Map<String, Object> status = new HashMap<>();
+        status.put("status", "UP");
+        status.put("timestamp", System.currentTimeMillis());
+        status.put("version", "1.0.0");
         
-        return ResponseEntity.ok(debug);
+        try {
+            // 测试连接
+            oauthClient.getAccessToken();
+            status.put("salesforce", "connected");
+        } catch (Exception e) {
+            status.put("salesforce", "disconnected");
+            status.put("salesforceError", e.getMessage());
+        }
+        
+        return ResponseEntity.ok(status);
     }
 }
-
-
-
