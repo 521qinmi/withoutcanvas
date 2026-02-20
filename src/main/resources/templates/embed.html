@@ -297,52 +297,86 @@ function fetchRecord() {
     // 根据前缀映射到不同的对象类型和API端点
     switch(recordPrefix) {
         case '001': // Account
-            apiEndpoint = '/api/account/';
+            apiEndpoint = 'account';
             objectType = 'Account';
             break;
+        case '003': // Contact
+            apiEndpoint = 'contact';
+            objectType = 'Contact';
+            break;
+        case '006': // Opportunity
+            apiEndpoint = 'opportunity';
+            objectType = 'Opportunity';
+            break;
+        case '500': // Case
+            apiEndpoint = 'case';
+            objectType = 'Case';
+            break;
+        case '00Q': // Lead
+            apiEndpoint = 'lead';
+            objectType = 'Lead';
+            break;
         case 'a6W': // ffscpq_Estimate__c
-            apiEndpoint = '/estimate/';
+            apiEndpoint = 'estimate';
             objectType = 'ffscpq_Estimate__c';
             break;  
         default:
-            // 默认使用account端点
-            apiEndpoint = '/api/account/';
-            objectType = 'Account (default)';
+            apiEndpoint = 'account';
+            objectType = 'Account';
             log(`⚠️ Unknown record prefix: ${recordPrefix}, using default account endpoint`, 'WARN');
     }
     
+    // 构建完整的API URL - 确保没有重复的斜杠
+    const fullUrl = `/api/${apiEndpoint}/${config.recordId}`;
+    
     log(`📋 Record type detected: ${objectType} (prefix: ${recordPrefix})`, 'INFO');
-    log(`🌐 API endpoint: ${apiEndpoint + config.recordId}`, 'INFO');
+    log(`🌐 API endpoint: ${fullUrl}`, 'INFO');
     
     // 调用相应的API
-    fetch(apiEndpoint + config.recordId)
-        .then(res => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            return res.json();
-        })
-        .then(data => {
-            document.getElementById('accountData').textContent = 
-                JSON.stringify(data, null, 2);
-            log(`✅ ${objectType} data retrieved successfully`, 'SUCCESS');
-            document.getElementById('apiStatus').textContent = '✅';
-            
-            // 根据对象类型发送不同的消息类型到Salesforce
-            const messageType = objectType === 'Estimate' ? 'estimateData' : 'recordData';
-            
-            // Send to Salesforce
-            sendToParent({
-                type: messageType,
-                objectType: objectType,
-                data: data,
-                from: 'java-app'
-            });
-        })
-        .catch(err => {
-            log(`❌ API Error (${objectType}): ` + err.message, 'ERROR');
-            document.getElementById('apiStatus').textContent = '❌';
-            document.getElementById('accountData').textContent = 
-                `Error fetching ${objectType} data: ${err.message}\n\nPlease check:\n1. API endpoint exists (/api/${apiEndpoint.toLowerCase()}/)\n2. Network connection\n3. Console errors`;
+    fetch(fullUrl, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(res => {
+        if (!res.ok) {
+            if (res.status === 403) {
+                throw new Error(`HTTP 403 - Forbidden. Check CORS and security settings.`);
+            }
+            throw new Error(`HTTP ${res.status}`);
+        }
+        return res.json();
+    })
+    .then(data => {
+        document.getElementById('accountData').textContent = 
+            JSON.stringify(data, null, 2);
+        log(`✅ ${objectType} data retrieved successfully`, 'SUCCESS');
+        document.getElementById('apiStatus').textContent = '✅';
+        
+        // Send to Salesforce
+        sendToParent({
+            type: 'recordData',
+            objectType: objectType,
+            data: data,
+            from: 'java-app'
         });
+    })
+    .catch(err => {
+        log(`❌ API Error: ` + err.message, 'ERROR');
+        document.getElementById('apiStatus').textContent = '❌';
+        
+        // 自定义错误提示
+        let errorMessage = `Error fetching ${objectType} data: ${err.message}`;
+        
+        if (objectType === 'ffscpq_Estimate__c') {
+            errorMessage += `\n\nPlease check:\n1. API endpoint exists (/api/estimate/${config.recordId})\n2. Network connection\n3. Console errors`;
+        } else {
+            errorMessage += `\n\nPlease check:\n1. API endpoint exists (/api/${apiEndpoint}/${config.recordId})\n2. Network connection\n3. Console errors`;
+        }
+        
+        document.getElementById('accountData').textContent = errorMessage;
+    });
 }
         
         function testAPI() {
@@ -474,6 +508,7 @@ function fetchRecord() {
     </script>
 </body>
 </html>
+
 
 
 
