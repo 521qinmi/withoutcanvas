@@ -35,7 +35,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList(
             "https://withoutcanvas-production.up.railway.app",  // 您的 Railway 域名
-            "https://bigdipper-pluto-4490.scratch.lightning.force.com/",           // 替换为您的实际 Salesforce 域名
+            "https://bigdipper-pluto-4490.scratch.lightning.force.com",           // 替换为您的实际 Salesforce 域名
             "https://bigdipper-pluto-4490.scratch.my.salesforce.com"              // 替换为您的实际 Salesforce 域名
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
@@ -49,4 +49,5 @@ public class SecurityConfig {
     }
 
 }
+
 
