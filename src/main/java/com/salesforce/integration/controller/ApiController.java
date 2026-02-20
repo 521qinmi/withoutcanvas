@@ -1,7 +1,8 @@
 package com.salesforce.integration.controller;
 
-import com.salesforce.integration.service.SalesforceService;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.salesforce.integration.service.SalesforceApiService;
+import com.salesforce.integration.service.SalesforceOAuthClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -55,17 +56,12 @@ public class ApiController {
     @GetMapping("/account/{id}")
     public ResponseEntity<?> getAccount(@PathVariable String id) {
         try {
-            logger.info("Getting account from Salesforce: {}", id);
-            Map<String, Object> account = salesforceService.getAccountById(id);
+            logger.info("获取Account信息: {}", id);
+            JsonNode account = salesforceApiService.getAccountById(id);
             return ResponseEntity.ok(account);
         } catch (Exception e) {
-            logger.error("Error getting account: {}", e.getMessage(), e);
-            
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            error.put("accountId", id);
-            error.put("status", "failed");
-            return ResponseEntity.status(500).body(error);
+            logger.error("Get Account Failure", e);
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
         }
     }
     @PostMapping("/message")
@@ -91,5 +87,6 @@ public class ApiController {
         return ResponseEntity.ok(debug);
     }
 }
+
 
 
