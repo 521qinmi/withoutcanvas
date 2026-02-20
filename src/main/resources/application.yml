@@ -7,13 +7,13 @@ salesforce:
   oauth:
     client-id: ${SF_CLIENT_ID:你的消费者密钥}
     client-secret: ${SF_CLIENT_SECRET:你的消费者密钥}
-    token-url: https://你的实例域名.my.salesforce.com/services/oauth2/token
+    token-url: https://bigdipper-pluto-4490.scratch.my.salesforce.com/services/oauth2/token
     api-version: v59.0
 
 cors:
   allowed-origins:
-    - https://你的域名.lightning.force.com
-    - https://你的域名.my.salesforce.com
+    - https://bigdipper-pluto-4490.scratch.lightning.force.com/
+    - https://bigdipper-pluto-4490.scratch.my.salesforce.com
 
 logging:
   level:
