@@ -51,67 +51,63 @@ public class SalesforceApiService {
     }
     
     /**
-     * 通用记录查询 - 适用于任何对象
-     */
-    public Map<String, Object> getRecordById(String objectType, String recordId) throws Exception {
-        logger.info("Getting {} record: {}", objectType, recordId);
-        
-        TokenInfo tokenInfo = oauthClient.getAccessToken();
-        
-        // 使用SOQL查询
-        String soql = String.format("SELECT FIELDS(ALL) FROM %s WHERE Id = '%s' LIMIT 1", 
-                                    objectType, recordId);
-        
-        String encodedSoql = URLEncoder.encode(soql, StandardCharsets.UTF_8.toString());
-        String url = tokenInfo.getInstanceUrl() + "/services/data/" + apiVersion + 
-                    "/query?q=" + encodedSoql;
-        
-        logger.info("Query URL: {}", url);
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(tokenInfo.getAccessToken());
-        
-        HttpEntity<String> request = new HttpEntity<>(headers);
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, request, String.class);
-        
-        if (response.getStatusCode().is2xxSuccessful()) {
-            JsonNode jsonResponse = objectMapper.readTree(response.getBody());
-            
-            if (jsonResponse.has("records") && jsonResponse.get("records").size() > 0) {
-                JsonNode record = jsonResponse.get("records").get(0);
-                
-                // 转换为Map
-                Map<String, Object> result = new HashMap<>();
-                Iterator<Map.Entry<String, JsonNode>> fields = record.fields();
-                
-                while (fields.hasNext()) {
-                    Map.Entry<String, JsonNode> field = fields.next();
-                    String fieldName = field.getKey();
-                    JsonNode fieldValue = field.getValue();
-                    
-                    if (!fieldValue.isNull() && !fieldValue.isObject()) {
-                        if (fieldValue.isTextual()) {
-                            result.put(fieldName, fieldValue.asText());
-                        } else if (fieldValue.isNumber()) {
-                            result.put(fieldName, fieldValue.asDouble());
-                        } else if (fieldValue.isBoolean()) {
-                            result.put(fieldName, fieldValue.asBoolean());
-                        } else if (fieldValue.isArray()) {
-                            result.put(fieldName, fieldValue.toString());
-                        } else {
-                            result.put(fieldName, fieldValue.toString());
-                        }
-                    }
-                }
-                
-                return result;
-            } else {
-                throw new Exception("Record not found: " + recordId);
-            }
-        } else {
-            throw new Exception("Query failed: " + response.getStatusCode() + " - " + response.getBody());
-        }
+ * 通用记录查询 - 适用于任何对象
+ */
+public Map<String, Object> getRecordById(String objectType, String recordId) throws Exception {
+    logger.info("Getting {} record: {}", objectType, recordId);
+    
+    TokenInfo tokenInfo = oauthClient.getAccessToken();
+    
+    // 不使用 FIELDS(ALL)，而是查询特定字段
+    // 先获取对象的字段列表，或者使用常用的字段
+    String soql;
+    
+    if (objectType.equals("Account")) {
+        soql = "SELECT Id, Name, Phone, Website, Industry, Type, Description, AnnualRevenue " +
+               "FROM Account WHERE Id = '" + recordId + "'";
+    } else if (objectType.equals("ffscpq_Estimate__c")) {
+        // 为 Estimate 对象查询常用字段
+        soql = "SELECT Id, Name, ffscpq_Amount__c, ffscpq_Status__c, ffscpq_Date__c " +
+               "FROM ffscpq_Estimate__c WHERE Id = '" + recordId + "'";
+    } else {
+        // 通用回退 - 只查询Id和Name
+        soql = "SELECT Id, Name FROM " + objectType + " WHERE Id = '" + recordId + "'";
     }
+    
+    logger.info("SOQL: {}", soql);
+    
+    JsonNode result = executeQuery(soql);
+    
+    if (result != null && result.has("records") && result.get("records").size() > 0) {
+        JsonNode record = result.get("records").get(0);
+        
+        // 转换为Map
+        Map<String, Object> resultMap = new HashMap<>();
+        Iterator<Map.Entry<String, JsonNode>> fields = record.fields();
+        
+        while (fields.hasNext()) {
+            Map.Entry<String, JsonNode> field = fields.next();
+            String fieldName = field.getKey();
+            JsonNode fieldValue = field.getValue();
+            
+            if (!fieldValue.isNull() && !fieldValue.isObject() && !fieldValue.isArray()) {
+                if (fieldValue.isTextual()) {
+                    resultMap.put(fieldName, fieldValue.asText());
+                } else if (fieldValue.isNumber()) {
+                    resultMap.put(fieldName, fieldValue.asDouble());
+                } else if (fieldValue.isBoolean()) {
+                    resultMap.put(fieldName, fieldValue.asBoolean());
+                } else {
+                    resultMap.put(fieldName, fieldValue.toString());
+                }
+            }
+        }
+        
+        return resultMap;
+    } else {
+        throw new Exception("Record not found: " + recordId);
+    }
+}
     
     /**
      * 执行SOQL查询
@@ -196,4 +192,5 @@ public class SalesforceApiService {
         return null;
     }
 }
+
 
