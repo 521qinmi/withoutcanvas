@@ -141,7 +141,7 @@ public class SalesforceOAuthClient {
     private void validateToken(TokenInfo token) {
         try {
             RestTemplate restTemplate = new RestTemplate();
-            String url = token.getInstanceUrl() + "/services/data/v59.0/sobjects/";
+            String url = token.getInstanceUrl() + "/services/data/v57.0/sobjects/";
             
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(token.getAccessToken());
@@ -166,10 +166,11 @@ public class SalesforceOAuthClient {
     private TokenInfo getMockToken() {
         TokenInfo mockToken = new TokenInfo();
         mockToken.setAccessToken("mock-access-token");
-        mockToken.setInstanceUrl("https://yourdomain.my.salesforce.com");
+        mockToken.setInstanceUrl("https://bigdipper-pluto-4490.scratch.my.salesforce.com");
         mockToken.setTokenType("Bearer");
         mockToken.setExpiresIn(3600);
         mockToken.setIssuedAt(System.currentTimeMillis());
         return mockToken;
     }
 }
+
