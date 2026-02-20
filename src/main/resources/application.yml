@@ -11,7 +11,7 @@ salesforce:
     password: ${SF_PASSWORD}
     ##token-url: https://bigdipper-pluto-4490.scratch.my.salesforce.com/services/oauth2/token
     token-url: ${SF_TOKEN_URL:https://test.salesforce.com/services/oauth2/token}
-    api-version: v59.0
+    api-version: v57.0
 
 cors:
   allowed-origins:
