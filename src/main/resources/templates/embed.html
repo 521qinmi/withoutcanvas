@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Salesforce Integration</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .card { border: 1px solid #ddd; padding: 20px; margin-bottom: 20px; border-radius: 4px; }
+        button { background: #0070d2; color: white; border: none; padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .log { background: #f5f5f5; padding: 10px; height: 200px; overflow-y: auto; font-family: monospace; }
+        #accountId { font-weight: bold; color: #0070d2; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Salesforce Java Integration</h1>
+        <p>Account ID: <span id="accountId" th:text="${recordId}"></span></p>
+        
+        <div class="card">
+            <h3>Account Information</h3>
+            <button onclick="fetchAccount()">Fetch Account</button>
+            <pre id="accountData">Click button to load data</pre>
+        </div>
+        
+        <div class="card">
+            <h3>Communication Log</h3>
+            <div id="messageLog" class="log"></div>
+        </div>
+        
+        <div class="card">
+            <h3>Send Message to Salesforce</h3>
+            <input type="text" id="messageInput" placeholder="Enter message" style="width: 300px; padding: 5px;">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const recordId = document.getElementById('accountId').textContent;
+        const trustedOrigins = [
+            'https://yourdomain.lightning.force.com',
+            'https://yourdomain.my.salesforce.com'
+        ];
+        
+        window.addEventListener('message', function(event) {
+            if (!trustedOrigins.includes(event.origin)) {
+                console.warn('Untrusted origin:', event.origin);
+                return;
+            }
+            
+            addToLog('Received: ' + JSON.stringify(event.data));
+            
+            if (event.data.type === 'fromSalesforce') {
+                alert('Message from Salesforce: ' + event.data.content);
+            }
+        });
+        
+        function fetchAccount() {
+            addToLog('Fetching account data...');
+            
+            fetch('/api/account/' + recordId)
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('accountData').textContent = 
+                        JSON.stringify(data, null, 2);
+                    addToLog('Account data received');
+                    
+                    // Send to parent
+                    if (window.parent) {
+                        window.parent.postMessage({
+                            type: 'accountData',
+                            data: data
+                        }, trustedOrigins[0]);
+                    }
+                })
+                .catch(err => {
+                    addToLog('Error: ' + err.message);
+                });
+        }
+        
+        function sendMessage() {
+            const message = document.getElementById('messageInput').value;
+            if (!message) return;
+            
+            if (window.parent) {
+                window.parent.postMessage({
+                    type: 'fromJava',
+                    content: message,
+                    recordId: recordId
+                }, trustedOrigins[0]);
+                
+                addToLog('Sent: ' + message);
+                document.getElementById('messageInput').value = '';
+            }
+        }
+        
+        function addToLog(message) {
+            const log = document.getElementById('messageLog');
+            const entry = document.createElement('div');
+            entry.textContent = new Date().toLocaleTimeString() + ': ' + message;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        // Notify parent that we're ready
+        setTimeout(() => {
+            if (window.parent) {
+                window.parent.postMessage({
+                    type: 'ready',
+                    recordId: recordId
+                }, trustedOrigins[0]);
+            }
+        }, 500);
+    </script>
+</body>
+</html>
