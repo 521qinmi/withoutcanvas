@@ -3,13 +3,18 @@ package com.salesforce.integration.controller;
 import com.salesforce.integration.service.SalesforceApiService;
 import com.salesforce.integration.service.SalesforceOAuthClient;
 import com.salesforce.integration.model.TokenInfo;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api")
@@ -226,3 +231,4 @@ public class ApiController {
     }
     // ... 其他方法保持不变 (createTask, updateAccount, refreshToken, health)
 }
+
