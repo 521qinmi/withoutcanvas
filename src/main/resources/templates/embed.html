@@ -136,7 +136,7 @@
                     <div id="parentStatus">❓</div>
                 </div>
             </div>
-            <button onclick="fetchAccount()" id="fetchBtn">🔍 Get Record Data</button>
+            <button onclick="fetchRecord()" id="fetchBtn">🔍 Get Record Data</button>
             <button onclick="testAPI()" class="secondary">🔧 Test API Connection</button>
             <button onclick="testParentConnection()" class="secondary">📡 Test Parent Window Connection</button>
             <pre id="accountData" style="background: #f8f9fa; padding: 15px; margin-top: 15px; border-radius: 4px;">Click button to load data...</pre>
@@ -278,7 +278,8 @@
         }
         
         // ========== API Calls ==========
-       function fetchAccount() {
+      // ========== API Calls ==========
+function fetchRecord() {
     log('🔄 Fetching record data...', 'API');
     
     // 根据recordId前缀确定对象类型和对应的API端点
@@ -320,9 +321,9 @@
             apiEndpoint = '/api/lead/';
             objectType = 'Lead';
             break;
-        case 'a6W': // ffscpq__Estimate__c
+        case 'a6W': // ffscpq_Estimate__c
             apiEndpoint = '/api/estimate/';
-            objectType = 'ffscpq__Estimate__c';
+            objectType = 'ffscpq_Estimate__c';
             break;  
         default:
             // 默认使用account端点
@@ -494,6 +495,7 @@
     </script>
 </body>
 </html>
+
 
 
 
