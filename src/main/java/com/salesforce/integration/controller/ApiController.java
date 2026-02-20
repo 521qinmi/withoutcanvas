@@ -112,7 +112,7 @@ public class ApiController {
         prefixMap.put("006", "Opportunity");
         prefixMap.put("500", "Case");
         prefixMap.put("00Q", "Lead");
-        prefixMap.put("a6W", "Estimate__c");  // 您的Estimate对象
+        prefixMap.put("a6W", "ffscpq_Estimate__c");  // 您的Estimate对象
         prefixMap.put("a0X", "CustomObject__c");
         
         return prefixMap.getOrDefault(prefix, "Account");
@@ -120,3 +120,4 @@ public class ApiController {
     
     // ... 其他方法保持不变 (createTask, updateAccount, refreshToken, health)
 }
+
