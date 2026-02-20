@@ -34,30 +34,65 @@ public class ApiController {
         return ResponseEntity.ok(response);
     }
     
-    /**
-     * 通用记录查询接口 - 根据ID前缀自动识别对象类型
-     */
     @GetMapping("/record/{id}")
-    public ResponseEntity<?> getRecord(@PathVariable String id) {
-        try {
-            logger.info("Getting record from Salesforce: {}", id);
-            
-            // 根据ID前缀确定对象类型
-            String objectType = inferObjectTypeFromId(id);
-            logger.info("Inferred object type: {}", objectType);
-            
-            Map<String, Object> record = salesforceApiService.getRecordById(objectType, id);
-            return ResponseEntity.ok(record);
-        } catch (Exception e) {
-            logger.error("Error getting record: {}", e.getMessage(), e);
-            
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            error.put("recordId", id);
-            error.put("status", "failed");
-            return ResponseEntity.status(500).body(error);
-        }
+public ResponseEntity<?> getRecord(@PathVariable String id) {
+    try {
+        logger.info("Getting record: {}", id);
+        
+        // 根据ID前缀推断对象类型
+        String objectType = inferObjectTypeFromId(id);
+        logger.info("Inferred object type: {}", objectType);
+        
+        Map<String, Object> record = salesforceApiService.getRecordById(objectType, id);
+        return ResponseEntity.ok(record);
+    } catch (Exception e) {
+        logger.error("Error getting record: {}", e.getMessage(), e);
+        
+        Map<String, Object> error = new HashMap<>();
+        error.put("error", e.getMessage());
+        error.put("recordId", id);
+        error.put("status", "failed");
+        return ResponseEntity.status(500).body(error);
     }
+}
+
+/**
+ * 根据ID前缀推断对象类型
+ */
+private String inferObjectTypeFromId(String id) {
+    if (id == null || id.length() < 3) return "Account";
+    
+    String prefix = id.substring(0, 3);
+    logger.info("Record ID prefix: {}", prefix);
+    
+    // 对象类型映射
+    if ("001".equals(prefix)) return "Account";
+    if ("003".equals(prefix)) return "Contact";
+    if ("006".equals(prefix)) return "Opportunity";
+    if ("500".equals(prefix)) return "Case";
+    if ("00Q".equals(prefix)) return "Lead";
+    if ("a6W".equals(prefix)) return "ffscpq_Estimate__c";  // 两个下划线
+    
+    return "Account";
+}
+
+// 删除原来的 getEstimate 方法，或者保留但调用通用方法
+@GetMapping("/estimate/{id}")
+public ResponseEntity<?> getEstimate(@PathVariable String id) {
+    try {
+        logger.info("Getting estimate via estimate endpoint: {}", id);
+        // 直接调用通用方法，但指定对象类型
+        Map<String, Object> estimate = salesforceApiService.getRecordById("ffscpq_Estimate__c", id);
+        return ResponseEntity.ok(estimate);
+    } catch (Exception e) {
+        logger.error("Error getting estimate: {}", e.getMessage(), e);
+        return ResponseEntity.status(500).body(Map.of(
+            "error", e.getMessage(),
+            "estimateId", id,
+            "objectType", "ffscpq_Estimate__c"
+        ));
+    }
+}
     
     /**
      * 保留原有Account接口向后兼容
@@ -79,45 +114,8 @@ public class ApiController {
         }
     }
     
-    /**
-     * Estimate专用接口
-     */
-    @GetMapping("/estimate/{id}")
-    public ResponseEntity<?> getEstimate(@PathVariable String id) {
-        try {
-            logger.info("Getting estimate from Salesforce: {}", id);
-            Map<String, Object> estimate = salesforceApiService.getEstimateById(id);
-            return ResponseEntity.ok(estimate);
-        } catch (Exception e) {
-            logger.error("Error getting estimate: {}", e.getMessage(), e);
-            
-            Map<String, Object> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            error.put("estimateId", id);
-            error.put("status", "failed");
-            return ResponseEntity.status(500).body(error);
-        }
-    }
-    
-    /**
-     * 根据ID前缀推断对象类型
-     */
-    private String inferObjectTypeFromId(String id) {
-        if (id == null || id.length() < 3) return "Account";
-        
-        String prefix = id.substring(0, 3);
-        Map<String, String> prefixMap = new HashMap<>();
-        prefixMap.put("001", "Account");
-        prefixMap.put("003", "Contact");
-        prefixMap.put("006", "Opportunity");
-        prefixMap.put("500", "Case");
-        prefixMap.put("00Q", "Lead");
-        prefixMap.put("a6W", "ffscpq_Estimate__c");  // 您的Estimate对象
-        prefixMap.put("a0X", "CustomObject__c");
-        
-        return prefixMap.getOrDefault(prefix, "Account");
-    }
     
     // ... 其他方法保持不变 (createTask, updateAccount, refreshToken, health)
 }
+
 
