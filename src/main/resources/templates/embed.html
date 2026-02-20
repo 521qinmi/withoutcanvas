@@ -120,8 +120,8 @@
         
         <!-- Account Information Card -->
         <div class="card">
-            <h3>📋 Account Information</h3>
-            <p>Account ID: <span id="accountId" th:text="${recordId}"></span></p>
+            <h3>📋 Record Information</h3>
+            <p>Record ID: <span id="accountId" th:text="${recordId}"></span></p>
             <div class="stats">
                 <div class="stat-item">
                     <div>API Status</div>
@@ -136,7 +136,7 @@
                     <div id="parentStatus">❓</div>
                 </div>
             </div>
-            <button onclick="fetchAccount()" id="fetchBtn">🔍 Get Account Data</button>
+            <button onclick="fetchAccount()" id="fetchBtn">🔍 Get Record Data</button>
             <button onclick="testAPI()" class="secondary">🔧 Test API Connection</button>
             <button onclick="testParentConnection()" class="secondary">📡 Test Parent Window Connection</button>
             <pre id="accountData" style="background: #f8f9fa; padding: 15px; margin-top: 15px; border-radius: 4px;">Click button to load data...</pre>
@@ -436,3 +436,4 @@
     </script>
 </body>
 </html>
+
