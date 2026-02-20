@@ -43,100 +43,72 @@ public class SalesforceOAuthClient {
     }
     
     public TokenInfo getAccessToken() throws Exception {
-        // 检查缓存
-        String cacheKey = "default";
-        TokenInfo cached = tokenCache.get(cacheKey);
-        if (cached != null && !cached.isExpired()) {
-            logger.debug("Using cached access token");
-            return cached;
-        }
-        
-        // 如果没有配置凭证，返回模拟令牌
-        if (clientId.isEmpty() || clientSecret.isEmpty()) {
-            logger.warn("Salesforce credentials not configured, using mock token");
-            return getMockToken();
-        }
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-        
-        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        
-        // 优先使用用户名密码模式
-        if (username != null && !username.isEmpty() && password != null && !password.isEmpty()) {
-            body.add("grant_type", "password");
-            body.add("client_id", clientId);
-            body.add("client_secret", clientSecret);
-            body.add("username", username);
-            body.add("password", password);
-            // 明确指定scope
-            body.add("scope", "api refresh_token offline_access");
-            logger.info("Using password grant flow with username: {}", username);
-        } else {
-            // 客户端凭证流
-            body.add("grant_type", "client_credentials");
-            body.add("client_id", clientId);
-            body.add("client_secret", clientSecret);
-            logger.info("Using client credentials flow");
-        }
-        
-        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
-        
-        try {
-            logger.info("Requesting access token from: {}", tokenUrl);
-            
-            ResponseEntity<String> response = restTemplate.postForEntity(tokenUrl, request, String.class);
-            
-            if (response.getStatusCode() == HttpStatus.OK) {
-                JsonNode json = objectMapper.readTree(response.getBody());
-                
-                TokenInfo tokenInfo = new TokenInfo();
-                tokenInfo.setAccessToken(json.get("access_token").asText());
-                tokenInfo.setInstanceUrl(json.get("instance_url").asText());
-                tokenInfo.setTokenType(json.get("token_type").asText());
-                tokenInfo.setExpiresIn(json.get("expires_in").asInt());
-                tokenInfo.setIssuedAt(System.currentTimeMillis());
-                
-                // 如果有refresh_token，保存它
-                if (json.has("refresh_token")) {
-                    tokenInfo.setRefreshToken(json.get("refresh_token").asText());
-                }
-                
-                // 如果有其他字段，也保存
-                if (json.has("id")) {
-                    tokenInfo.setId(json.get("id").asText());
-                }
-                if (json.has("signature")) {
-                    tokenInfo.setSignature(json.get("signature").asText());
-                }
-                if (json.has("scope")) {
-                    tokenInfo.setScope(json.get("scope").asText());
-                }
-                
-                tokenCache.put(cacheKey, tokenInfo);
-                logger.info("Successfully obtained access token, expires in: {} seconds", tokenInfo.getExpiresIn());
-                
-                // 验证令牌是否立即可用
-                validateToken(tokenInfo);
-                
-                return tokenInfo;
-            } else {
-                throw new Exception("Failed to get token: " + response.getStatusCode() + " - " + response.getBody());
-            }
-        } catch (Exception e) {
-            logger.error("OAuth token error", e);
-            
-            // 如果是HTTP错误，提取详细响应
-            if (e instanceof org.springframework.web.client.HttpClientErrorException) {
-                org.springframework.web.client.HttpClientErrorException httpEx = 
-                    (org.springframework.web.client.HttpClientErrorException) e;
-                logger.error("HTTP Status: {}", httpEx.getStatusCode());
-                logger.error("Response Body: {}", httpEx.getResponseBodyAsString());
-            }
-            
-            throw e;
-        }
+    // 检查缓存
+    String cacheKey = "default";
+    TokenInfo cached = tokenCache.get(cacheKey);
+    if (cached != null && !cached.isExpired()) {
+        logger.debug("Using cached access token");
+        return cached;
     }
+    
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+    
+    MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+    
+    // 使用用户名密码模式，但不指定 scope
+    body.add("grant_type", "password");
+    body.add("client_id", clientId);
+    body.add("client_secret", clientSecret);
+    body.add("username", username);
+    body.add("password", password);
+    
+    // ⚠️ 重要：不要添加 scope 参数，因为您的实例不支持
+    
+    HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
+    
+    try {
+        logger.info("Requesting access token from: {}", tokenUrl);
+        logger.info("Username: {}", username);
+        
+        ResponseEntity<String> response = restTemplate.postForEntity(tokenUrl, request, String.class);
+        
+        if (response.getStatusCode() == HttpStatus.OK) {
+            JsonNode json = objectMapper.readTree(response.getBody());
+            
+            TokenInfo tokenInfo = new TokenInfo();
+            tokenInfo.setAccessToken(json.get("access_token").asText());
+            tokenInfo.setInstanceUrl(json.get("instance_url").asText());
+            tokenInfo.setTokenType(json.get("token_type").asText());
+            tokenInfo.setExpiresIn(json.get("expires_in").asInt());
+            tokenInfo.setIssuedAt(System.currentTimeMillis());
+            
+            // 记录响应中实际返回的 scope
+            if (json.has("scope")) {
+                tokenInfo.setScope(json.get("scope").asText());
+                logger.info("Scope returned: {}", json.get("scope").asText());
+            }
+            
+            tokenCache.put(cacheKey, tokenInfo);
+            logger.info("Successfully obtained access token, expires in: {} seconds", tokenInfo.getExpiresIn());
+            
+            return tokenInfo;
+        } else {
+            throw new Exception("Failed to get token: " + response.getStatusCode());
+        }
+    } catch (Exception e) {
+        logger.error("OAuth token error", e);
+        
+        if (e instanceof org.springframework.web.client.HttpClientErrorException) {
+            org.springframework.web.client.HttpClientErrorException httpEx = 
+                (org.springframework.web.client.HttpClientErrorException) e;
+            logger.error("HTTP Status: {}", httpEx.getStatusCode());
+            logger.error("Response Body: {}", httpEx.getResponseBodyAsString());
+        }
+        
+        throw e;
+    }
+}
     
     private void validateToken(TokenInfo token) {
         try {
@@ -173,4 +145,5 @@ public class SalesforceOAuthClient {
         return mockToken;
     }
 }
+
 
