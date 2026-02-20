@@ -1,144 +1,54 @@
 package com.salesforce.integration.controller;
 
+import com.salesforce.integration.service.SalesforceOAuthClient;
+import com.salesforce.integration.model.TokenInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/auth-test")
+@RequestMapping("/api/auth")
 public class AuthTestController {
     private static final Logger logger = LoggerFactory.getLogger(AuthTestController.class);
     
-    @Value("${salesforce.oauth.client-id:}")
-    private String clientId;
+    @Autowired
+    private SalesforceOAuthClient oauthClient;
     
-    @Value("${salesforce.oauth.client-secret:}")
-    private String clientSecret;
-    
-    @Value("${salesforce.oauth.username:}")
-    private String username;
-    
-    @Value("${salesforce.oauth.password:}")
-    private String password;
-    
-    @Value("${salesforce.oauth.token-url:}")
-    private String tokenUrl;
-    
-    @GetMapping("/direct")
-    public Map<String, Object> testDirectAuth() {
-        Map<String, Object> result = new HashMap<>();
-        result.put("timestamp", System.currentTimeMillis());
-        result.put("token_url", tokenUrl);
-        result.put("username", username);
-        
-        RestTemplate restTemplate = new RestTemplate();
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-        
-        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        body.add("grant_type", "password");
-        body.add("client_id", clientId);
-        body.add("client_secret", clientSecret);
-        body.add("username", username);
-        body.add("password", password);
-        
-        // 尝试不同的scope组合
-        String[] scopeCombinations = {
-            "api refresh_token",
-            "api offline_access",
-            "api refresh_token offline_access",
-            "api",
-            "full refresh_token"
-        };
-        
-        Map<String, Object> attempts = new HashMap<>();
-        
-        for (String scope : scopeCombinations) {
-            try {
-                MultiValueMap<String, String> bodyWithScope = new LinkedMultiValueMap<>(body);
-                bodyWithScope.add("scope", scope);
-                
-                HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(bodyWithScope, headers);
-                
-                ResponseEntity<Map> response = restTemplate.postForEntity(tokenUrl, request, Map.class);
-                
-                attempts.put(scope, Map.of(
-                    "success", true,
-                    "status", response.getStatusCode().value(),
-                    "has_access_token", response.getBody().containsKey("access_token"),
-                    "has_refresh_token", response.getBody().containsKey("refresh_token"),
-                    "instance_url", response.getBody().get("instance_url")
-                ));
-                
-            } catch (Exception e) {
-                attempts.put(scope, Map.of(
-                    "success", false,
-                    "error", e.getMessage()
-                ));
-                
-                if (e instanceof org.springframework.web.client.HttpClientErrorException) {
-                    org.springframework.web.client.HttpClientErrorException httpEx = 
-                        (org.springframework.web.client.HttpClientErrorException) e;
-                    attempts.put(scope + "_details", Map.of(
-                        "http_status", httpEx.getStatusCode().value(),
-                        "response", httpEx.getResponseBodyAsString()
-                    ));
-                }
-            }
-        }
-        
-        result.put("attempts", attempts);
-        return result;
-    }
-    
-    @GetMapping("/simple-token")
-    public Map<String, Object> getSimpleToken() {
+    @GetMapping("/test")
+    public Map<String, Object> testAuth() {
         Map<String, Object> result = new HashMap<>();
         
         try {
-            RestTemplate restTemplate = new RestTemplate();
-            
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-            
-            MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-            body.add("grant_type", "password");
-            body.add("client_id", clientId);
-            body.add("client_secret", clientSecret);
-            body.add("username", username);
-            body.add("password", password);
-            
-            HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
-            
-            ResponseEntity<Map> response = restTemplate.postForEntity(tokenUrl, request, Map.class);
+            TokenInfo tokenInfo = oauthClient.getAccessToken();
             
             result.put("success", true);
-            result.put("status", response.getStatusCode().value());
-            result.put("response", response.getBody());
+            result.put("instance_url", tokenInfo.getInstanceUrl());
+            result.put("token_type", tokenInfo.getTokenType());
+            result.put("expires_in", tokenInfo.getExpiresIn());
+            result.put("issued_at", tokenInfo.getIssuedAt());
             
         } catch (Exception e) {
             result.put("success", false);
             result.put("error", e.getMessage());
-            
-            if (e instanceof org.springframework.web.client.HttpClientErrorException) {
-                org.springframework.web.client.HttpClientErrorException httpEx = 
-                    (org.springframework.web.client.HttpClientErrorException) e;
-                result.put("http_status", httpEx.getStatusCode().value());
-                result.put("response_body", httpEx.getResponseBodyAsString());
-            }
+            result.put("error_type", e.getClass().getSimpleName());
         }
         
         return result;
+    }
+    
+    @GetMapping("/status")
+    public Map<String, Object> status() {
+        Map<String, Object> status = new HashMap<>();
+        status.put("service", "AuthTestController");
+        status.put("status", "running");
+        status.put("timestamp", System.currentTimeMillis());
+        status.put("auth_type", "Client Credentials Flow");
+        return status;
     }
 }
