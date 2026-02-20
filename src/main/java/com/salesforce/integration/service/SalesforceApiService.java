@@ -102,14 +102,20 @@ public Map<String, Object> getRecordById(String objectType, String recordId) thr
     }
 }
     
-    public JsonNode executeQuery(String soql) throws Exception {
+    /**
+ * 执行SOQL查询 - 使用 UriComponentsBuilder 避免编码问题
+ */
+public JsonNode executeQuery(String soql) throws Exception {
     TokenInfo tokenInfo = oauthClient.getAccessToken();
     
-    String encodedSoql = URLEncoder.encode(soql, StandardCharsets.UTF_8.toString());
-    String url = tokenInfo.getInstanceUrl() + "/services/data/" + apiVersion + 
-                "/query?q=" + encodedSoql;
+    // 使用 UriComponentsBuilder 构建 URL，它会自动处理编码
+    String url = UriComponentsBuilder.fromHttpUrl(tokenInfo.getInstanceUrl())
+            .path("/services/data/" + apiVersion + "/query")
+            .queryParam("q", soql)  // 直接传原始 SOQL，UriComponentsBuilder 会处理编码
+            .build()
+            .toUriString();
     
-    logger.info("Executing query: {}", soql);
+    logger.info("Original SOQL: {}", soql);
     logger.info("Encoded URL: {}", url);
     
     HttpHeaders headers = new HttpHeaders();
@@ -191,6 +197,7 @@ public Map<String, Object> getRecordById(String objectType, String recordId) thr
         return null;
     }
 }
+
 
 
 
