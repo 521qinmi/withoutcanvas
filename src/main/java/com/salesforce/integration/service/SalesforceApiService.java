@@ -56,36 +56,42 @@ public class SalesforceApiService {
      * 根据ID获取Account
      */
     public Map<String, Object> getAccountById(String accountId) throws Exception {
-        logger.info("Getting account info for: {}", accountId);
+    logger.info("Getting account info for: {}", accountId);
+    
+    TokenInfo tokenInfo = oauthClient.getAccessToken();
+    logger.info("Token obtained, instance URL: {}", tokenInfo.getInstanceUrl());
+    
+    // 先测试最简单的查询，看API是否工作
+    String testSoql = "SELECT Id FROM Account LIMIT 1";
+    JsonNode testResult = executeQuery(testSoql);
+    logger.info("Test query result: {}", testResult);
+    
+    // 然后查询具体的Account
+    String soql = String.format(
+        "SELECT Id, Name, Phone, Website, Industry, Type, Description " +
+        "FROM Account WHERE Id = '%s'", 
+        accountId
+    );
+    
+    JsonNode result = executeQuery(soql);
+    
+    if (result != null && result.has("records") && result.get("records").size() > 0) {
+        JsonNode record = result.get("records").get(0);
         
-        String soql = String.format(
-            "SELECT Id, Name, Phone, Website, Industry, Type, Description, " +
-            "AnnualRevenue, BillingStreet, BillingCity, BillingState, BillingPostalCode, " +
-            "BillingCountry, Owner.Name, CreatedDate, LastModifiedDate " +
-            "FROM Account WHERE Id = '%s'", 
-            accountId
-        );
+        Map<String, Object> account = new HashMap<>();
+        account.put("Id", getJsonProperty(record, "Id"));
+        account.put("Name", getJsonProperty(record, "Name"));
+        account.put("Phone", getJsonProperty(record, "Phone"));
+        account.put("Website", getJsonProperty(record, "Website"));
+        account.put("Industry", getJsonProperty(record, "Industry"));
+        account.put("Type", getJsonProperty(record, "Type"));
+        account.put("Description", getJsonProperty(record, "Description"));
         
-        JsonNode result = executeQuery(soql);
-        
-        if (result != null && result.has("records") && result.get("records").size() > 0) {
-            JsonNode record = result.get("records").get(0);
-            
-            Map<String, Object> account = new HashMap<>();
-            account.put("Id", getJsonProperty(record, "Id"));
-            account.put("Name", getJsonProperty(record, "Name"));
-            account.put("Phone", getJsonProperty(record, "Phone"));
-            account.put("Website", getJsonProperty(record, "Website"));
-            account.put("Industry", getJsonProperty(record, "Industry"));
-            account.put("Type", getJsonProperty(record, "Type"));
-            account.put("Description", getJsonProperty(record, "Description"));
-            account.put("AnnualRevenue", getJsonProperty(record, "AnnualRevenue"));
-            
-            return account;
-        } else {
-            throw new Exception("Account not found: " + accountId);
-        }
+        return account;
+    } else {
+        throw new Exception("Account not found: " + accountId);
     }
+}
     
     /**
      * 创建记录
@@ -141,3 +147,4 @@ public class SalesforceApiService {
         return null;
     }
 }
+
