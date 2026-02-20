@@ -108,7 +108,7 @@ public class SalesforceApiService {
     public Map<String, Object> getEstimateById(String estimateId) throws Exception {
         logger.info("Getting estimate info for: {}", estimateId);
         
-        String soql = "SELECT Id, Name FROM ffscpq_Estimate__c WHERE Id = '" + estimateId + "'";
+        String soql = "SELECT Id, Name FROM ffscpq__Estimate__c WHERE Id = '" + estimateId + "'";
         
         JsonNode result = executeQuery(soql);
         
@@ -215,3 +215,4 @@ public class SalesforceApiService {
         return null;
     }
 }
+
