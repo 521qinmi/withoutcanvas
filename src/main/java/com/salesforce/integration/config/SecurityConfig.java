@@ -22,7 +22,8 @@ public class SecurityConfig {
             .cors().and()
             .csrf().disable()
             .authorizeRequests()
-                .antMatchers("/embed", "/api/**", "/health", "/test.html").permitAll()
+                .antMatchers("/", "/embed", "/api/**", "/health", "/test.html", 
+                           "/diag/**", "/debug/**", "/test-auth/**").permitAll()
                 .anyRequest().authenticated()
             .and()
             .headers()
@@ -51,3 +52,4 @@ public class SecurityConfig {
         return source;
     }
 }
+
