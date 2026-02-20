@@ -91,7 +91,7 @@ public Map<String, Object> getRecordById(String objectType, String recordId) thr
                "FROM Account WHERE Id = '" + recordId + "'";
     } else if (objectType.equals("ffscpq_Estimate__c")) {
         // 为 Estimate 对象查询常用字段
-        soql = "SELECT Id, Name, ffscpq_Amount__c, ffscpq_Status__c, ffscpq_Date__c " +
+        soql = "SELECT Id, Name, ffscpq_Amount__c, ffscpq_Status__c " +
                "FROM ffscpq_Estimate__c WHERE Id = '" + recordId + "'";
     } else {
         // 通用回退 - 只查询Id和Name
@@ -222,6 +222,7 @@ public Map<String, Object> getRecordById(String objectType, String recordId) thr
         return null;
     }
 }
+
 
 
 
