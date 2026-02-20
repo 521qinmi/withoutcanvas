@@ -21,6 +21,7 @@ public class TokenInfo {
     private long issuedAt;
 
     public boolean isExpired() {
+        // Expire 5 minutes early
         return System.currentTimeMillis() - issuedAt > (expiresIn - 300) * 1000;
     }
 
