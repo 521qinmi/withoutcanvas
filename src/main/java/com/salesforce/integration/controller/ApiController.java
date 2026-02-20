@@ -130,7 +130,7 @@ public class ApiController {
             
             // 尝试不同的对象名变体
             String[] possibleNames = {
-                "ffscpq_Estimate__c",
+                "ffscpq__Estimate__c",
                 "ffscpq_Estimate_c",
                 "Estimate__c",
                 "ffscpq_Estimate"
@@ -242,7 +242,7 @@ public class ApiController {
         if ("006".equals(prefix)) return "Opportunity";
         if ("500".equals(prefix)) return "Case";
         if ("00Q".equals(prefix)) return "Lead";
-        if ("a6W".equals(prefix)) return "ffscpq_Estimate__c";
+        if ("a6W".equals(prefix)) return "ffscpq__Estimate__c";
         
         return "Account";
     }
@@ -322,3 +322,4 @@ public class ApiController {
         return ResponseEntity.ok(status);
     }
 }
+
