@@ -43,21 +43,19 @@ public class SalesforceApiService {
     }
     
  /**
- * 获取Estimate记录 - 修正字段名
+ * 获取Estimate记录 - 确保对象名正确
  */
 public Map<String, Object> getEstimateById(String estimateId) throws Exception {
     logger.info("Getting estimate info for: {}", estimateId);
     
     TokenInfo tokenInfo = oauthClient.getAccessToken();
     
-    // 先查询所有可用字段来调试
-    String debugSoql = "SELECT Id FROM ffscpq_Estimate__c WHERE Id = '" + estimateId + "'";
-    logger.info("Debug query: {}", debugSoql);
+    // 关键修正：对象名必须是 ffscpq_Estimate__c (两个下划线)
+    String objectName = "ffscpq_Estimate__c";
+    String soql = "SELECT Id, Name FROM " + objectName + " WHERE Id = '" + estimateId + "'";
     
-    // 使用最简单的查询，只查Id
-    String soql = "SELECT Id, Name FROM ffscpq_Estimate__c WHERE Id = '" + estimateId + "'";
-    
-    logger.info("Final SOQL: {}", soql);
+    logger.info("SOQL: {}", soql);
+    logger.info("Object Name: {}", objectName);
     
     JsonNode result = executeQuery(soql);
     
@@ -67,13 +65,13 @@ public Map<String, Object> getEstimateById(String estimateId) throws Exception {
         Map<String, Object> estimate = new HashMap<>();
         estimate.put("Id", getJsonProperty(record, "Id"));
         estimate.put("Name", getJsonProperty(record, "Name"));
+        estimate.put("ObjectType", objectName);
         
         return estimate;
     } else {
-        throw new Exception("Estimate not found: " + estimateId);
+        throw new Exception("Estimate not found: " + estimateId + " in object " + objectName);
     }
-}
-    
+} 
     /**
  * 通用记录查询 - 适用于任何对象
  */
@@ -222,6 +220,7 @@ public Map<String, Object> getRecordById(String objectType, String recordId) thr
         return null;
     }
 }
+
 
 
 
