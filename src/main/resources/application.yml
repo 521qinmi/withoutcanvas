@@ -18,3 +18,13 @@ cors:
 logging:
   level:
     com.yourpackage: DEBUG
+  
+spring:
+  web:
+    resources:
+      static-locations: classpath:/static/
+      
+# 禁用X-Frame-Options
+  security:
+    headers:
+      frame: false
