@@ -35,107 +35,119 @@ public class SalesforceApiService {
     }
     
     /**
-     * 根据ID获取Account
+     * 执行SOQL查询 - 使用 UriComponentsBuilder 避免编码问题
+     */
+    public JsonNode executeQuery(String soql) throws Exception {
+        TokenInfo tokenInfo = oauthClient.getAccessToken();
+        
+        // 使用 UriComponentsBuilder 构建 URL，它会自动处理编码
+        String url = UriComponentsBuilder.fromHttpUrl(tokenInfo.getInstanceUrl())
+                .path("/services/data/" + apiVersion + "/query")
+                .queryParam("q", soql)
+                .build()
+                .toUriString();
+        
+        logger.info("Original SOQL: {}", soql);
+        logger.info("Encoded URL: {}", url);
+        
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(tokenInfo.getAccessToken());
+        
+        HttpEntity<String> request = new HttpEntity<>(headers);
+        
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, request, String.class);
+            
+            if (response.getStatusCode().is2xxSuccessful()) {
+                return objectMapper.readTree(response.getBody());
+            } else {
+                throw new Exception("Query failed: " + response.getStatusCode() + " - " + response.getBody());
+            }
+        } catch (Exception e) {
+            logger.error("Query execution failed", e);
+            throw e;
+        }
+    }
+    
+    /**
+     * 获取Account记录
      */
     public Map<String, Object> getAccountById(String accountId) throws Exception {
         logger.info("Getting account info for: {}", accountId);
-        return getRecordById("Account", accountId);
+        
+        String soql = "SELECT Id, Name, Phone, Website, Industry, Type, Description, AnnualRevenue " +
+                     "FROM Account WHERE Id = '" + accountId + "'";
+        
+        JsonNode result = executeQuery(soql);
+        
+        if (result != null && result.has("records") && result.get("records").size() > 0) {
+            JsonNode record = result.get("records").get(0);
+            
+            Map<String, Object> account = new HashMap<>();
+            account.put("Id", getJsonProperty(record, "Id"));
+            account.put("Name", getJsonProperty(record, "Name"));
+            account.put("Phone", getJsonProperty(record, "Phone"));
+            account.put("Website", getJsonProperty(record, "Website"));
+            account.put("Industry", getJsonProperty(record, "Industry"));
+            account.put("Type", getJsonProperty(record, "Type"));
+            account.put("Description", getJsonProperty(record, "Description"));
+            
+            if (record.has("AnnualRevenue") && !record.get("AnnualRevenue").isNull()) {
+                account.put("AnnualRevenue", record.get("AnnualRevenue").asDouble());
+            }
+            
+            return account;
+        } else {
+            throw new Exception("Account not found: " + accountId);
+        }
     }
-    
- /**
- * 获取Estimate记录 - 确保对象名正确
- */
-public Map<String, Object> getEstimateById(String estimateId) throws Exception {
-    logger.info("Getting estimate info for: {}", estimateId);
-    
-    TokenInfo tokenInfo = oauthClient.getAccessToken();
-    
-    // 关键修正：对象名必须是 ffscpq_Estimate__c (两个下划线)
-    String objectName = "ffscpq_Estimate__c";
-    String soql = "SELECT Id, Name FROM " + objectName + " WHERE Id = '" + estimateId + "'";
-    
-    logger.info("SOQL: {}", soql);
-    logger.info("Object Name: {}", objectName);
-    
-    JsonNode result = executeQuery(soql);
-    
-    if (result != null && result.has("records") && result.get("records").size() > 0) {
-        JsonNode record = result.get("records").get(0);
-        
-        Map<String, Object> estimate = new HashMap<>();
-        estimate.put("Id", getJsonProperty(record, "Id"));
-        estimate.put("Name", getJsonProperty(record, "Name"));
-        estimate.put("ObjectType", objectName);
-        
-        return estimate;
-    } else {
-        throw new Exception("Estimate not found: " + estimateId + " in object " + objectName);
-    }
-} 
- /**
- * 通用记录查询 - 根据对象类型和ID查询记录
- */
-public Map<String, Object> getRecordById(String objectType, String recordId) throws Exception {
-    logger.info("Getting {} record: {}", objectType, recordId);
-    
-    TokenInfo tokenInfo = oauthClient.getAccessToken();
-    
-    // 构建SOQL查询 - 直接使用传入的对象类型
-    String soql = "SELECT Id, Name FROM " + objectType + " WHERE Id = '" + recordId + "'";
-    
-    logger.info("SOQL: {}", soql);
-    logger.info("Object Type: {}", objectType);
-    
-    JsonNode result = executeQuery(soql);
-    
-    if (result != null && result.has("records") && result.get("records").size() > 0) {
-        JsonNode record = result.get("records").get(0);
-        
-        Map<String, Object> resultMap = new HashMap<>();
-        resultMap.put("Id", getJsonProperty(record, "Id"));
-        resultMap.put("Name", getJsonProperty(record, "Name"));
-        resultMap.put("ObjectType", objectType);
-        
-        return resultMap;
-    } else {
-        throw new Exception("Record not found: " + recordId + " in object " + objectType);
-    }
-}
     
     /**
- * 执行SOQL查询 - 使用 UriComponentsBuilder 避免编码问题
- */
-public JsonNode executeQuery(String soql) throws Exception {
-    TokenInfo tokenInfo = oauthClient.getAccessToken();
-    
-    // 使用 UriComponentsBuilder 构建 URL，它会自动处理编码
-    String url = UriComponentsBuilder.fromHttpUrl(tokenInfo.getInstanceUrl())
-            .path("/services/data/" + apiVersion + "/query")
-            .queryParam("q", soql)  // 直接传原始 SOQL，UriComponentsBuilder 会处理编码
-            .build()
-            .toUriString();
-    
-    logger.info("Original SOQL: {}", soql);
-    logger.info("Encoded URL: {}", url);
-    
-    HttpHeaders headers = new HttpHeaders();
-    headers.setBearerAuth(tokenInfo.getAccessToken());
-    
-    HttpEntity<String> request = new HttpEntity<>(headers);
-    
-    try {
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, request, String.class);
+     * 获取Estimate记录
+     */
+    public Map<String, Object> getEstimateById(String estimateId) throws Exception {
+        logger.info("Getting estimate info for: {}", estimateId);
         
-        if (response.getStatusCode().is2xxSuccessful()) {
-            return objectMapper.readTree(response.getBody());
+        String soql = "SELECT Id, Name FROM ffscpq_Estimate__c WHERE Id = '" + estimateId + "'";
+        
+        JsonNode result = executeQuery(soql);
+        
+        if (result != null && result.has("records") && result.get("records").size() > 0) {
+            JsonNode record = result.get("records").get(0);
+            
+            Map<String, Object> estimate = new HashMap<>();
+            estimate.put("Id", getJsonProperty(record, "Id"));
+            estimate.put("Name", getJsonProperty(record, "Name"));
+            
+            return estimate;
         } else {
-            throw new Exception("Query failed: " + response.getStatusCode() + " - " + response.getBody());
+            throw new Exception("Estimate not found: " + estimateId);
         }
-    } catch (Exception e) {
-        logger.error("Query execution failed", e);
-        throw e;
     }
-}
+    
+    /**
+     * 通用记录查询
+     */
+    public Map<String, Object> getRecordById(String objectType, String recordId) throws Exception {
+        logger.info("Getting {} record: {}", objectType, recordId);
+        
+        String soql = "SELECT Id, Name FROM " + objectType + " WHERE Id = '" + recordId + "'";
+        
+        JsonNode result = executeQuery(soql);
+        
+        if (result != null && result.has("records") && result.get("records").size() > 0) {
+            JsonNode record = result.get("records").get(0);
+            
+            Map<String, Object> resultMap = new HashMap<>();
+            resultMap.put("Id", getJsonProperty(record, "Id"));
+            resultMap.put("Name", getJsonProperty(record, "Name"));
+            resultMap.put("ObjectType", objectType);
+            
+            return resultMap;
+        } else {
+            throw new Exception("Record not found: " + recordId + " in object " + objectType);
+        }
+    }
     
     /**
      * 创建记录
@@ -162,14 +174,14 @@ public JsonNode executeQuery(String soql) throws Exception {
     }
     
     /**
-     * 更新记录
+     * 更新Account记录
      */
-    public Map<String, Object> updateRecord(String objectType, String recordId, Map<String, Object> updates) throws Exception {
-        logger.info("Updating {} record {} with: {}", objectType, recordId, updates);
+    public Map<String, Object> updateAccount(String accountId, Map<String, Object> updates) throws Exception {
+        logger.info("Updating account {} with: {}", accountId, updates);
         
         TokenInfo tokenInfo = oauthClient.getAccessToken();
         
-        String url = tokenInfo.getInstanceUrl() + "/services/data/" + apiVersion + "/sobjects/" + objectType + "/" + recordId;
+        String url = tokenInfo.getInstanceUrl() + "/services/data/" + apiVersion + "/sobjects/Account/" + accountId;
         
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(tokenInfo.getAccessToken());
@@ -181,7 +193,8 @@ public JsonNode executeQuery(String soql) throws Exception {
         ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.PATCH, request, String.class);
         
         if (response.getStatusCode().is2xxSuccessful()) {
-            return getRecordById(objectType, recordId);
+            // 返回更新后的Account
+            return getAccountById(accountId);
         } else {
             throw new Exception("Update failed: " + response.getStatusCode() + " - " + response.getBody());
         }
@@ -192,16 +205,13 @@ public JsonNode executeQuery(String soql) throws Exception {
      */
     private String getJsonProperty(JsonNode node, String property) {
         if (node != null && node.has(property) && !node.get(property).isNull()) {
-            return node.get(property).asText();
+            JsonNode value = node.get(property);
+            if (value.isTextual()) {
+                return value.asText();
+            } else {
+                return value.toString();
+            }
         }
         return null;
     }
 }
-
-
-
-
-
-
-
-
