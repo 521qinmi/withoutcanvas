@@ -1,8 +1,8 @@
 package com.salesforce.integration.controller;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.salesforce.integration.service.SalesforceApiService;
 import com.salesforce.integration.service.SalesforceOAuthClient;
+import com.salesforce.integration.model.TokenInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -34,7 +34,29 @@ public class ApiController {
         return ResponseEntity.ok(response);
     }
     
-    /*@GetMapping("/account/{id}")
+    @GetMapping("/auth/test")
+    public ResponseEntity<?> testAuth() {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            TokenInfo tokenInfo = oauthClient.getAccessToken();
+            
+            result.put("success", true);
+            result.put("instance_url", tokenInfo.getInstanceUrl());
+            result.put("token_type", tokenInfo.getTokenType());
+            result.put("expires_in", tokenInfo.getExpiresIn());
+            result.put("issued_at", tokenInfo.getIssuedAt());
+            
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("error", e.getMessage());
+            result.put("error_type", e.getClass().getSimpleName());
+        }
+        
+        return ResponseEntity.ok(result);
+    }
+    
+    @GetMapping("/account/{id}")
     public ResponseEntity<?> getAccount(@PathVariable String id) {
         try {
             logger.info("Getting account from Salesforce: {}", id);
@@ -49,53 +71,6 @@ public class ApiController {
             error.put("status", "failed");
             return ResponseEntity.status(500).body(error);
         }
-    }*/
-    @GetMapping("/account/{id}")
-    public ResponseEntity<?> getAccount(@PathVariable String id) {
-        logger.info("========== GET ACCOUNT REQUEST ==========");
-        logger.info("Account ID: {}", id);
-        
-        Map<String, Object> response = new HashMap<>();
-        
-        try {
-            // 记录开始时间
-            long startTime = System.currentTimeMillis();
-            
-            // 尝试获取token
-            logger.info("Step 1: Getting access token...");
-            var token = oauthClient.getAccessToken();
-            logger.info("Step 1 Complete - Instance URL: {}", token.getInstanceUrl());
-            
-            // 尝试获取account
-            logger.info("Step 2: Fetching account from Salesforce...");
-            Map<String, Object> account = salesforceApiService.getAccountById(id);
-            logger.info("Step 2 Complete - Account found: {}", account.get("Name"));
-            
-            long duration = System.currentTimeMillis() - startTime;
-            logger.info("Total time: {}ms", duration);
-            
-            return ResponseEntity.ok(account);
-            
-        } catch (Exception e) {
-            logger.error("❌ ERROR in getAccount:", e);
-            
-            response.put("error", e.getMessage());
-            response.put("errorType", e.getClass().getSimpleName());
-            response.put("accountId", id);
-            response.put("timestamp", System.currentTimeMillis());
-            
-            // 如果是HTTP错误，尝试提取更多信息
-            if (e instanceof org.springframework.web.client.HttpClientErrorException) {
-                org.springframework.web.client.HttpClientErrorException httpEx = 
-                    (org.springframework.web.client.HttpClientErrorException) e;
-                response.put("httpStatus", httpEx.getStatusCode().value());
-                response.put("httpResponse", httpEx.getResponseBodyAsString());
-            }
-            
-            return ResponseEntity.status(500).body(response);
-        } finally {
-            logger.info("========== END REQUEST ==========");
-        }
     }
     
     @PostMapping("/task")
@@ -109,12 +84,13 @@ public class ApiController {
                 return ResponseEntity.badRequest().body(Map.of("error", "whatId and subject are required"));
             }
             
-            String jsonBody = String.format(
-                "{\"WhatId\":\"%s\", \"Subject\":\"%s\", \"Status\":\"%s\"}",
-                whatId, subject, status != null ? status : "Not Started"
-            );
+            Map<String, Object> fields = new HashMap<>();
+            fields.put("WhatId", whatId);
+            fields.put("Subject", subject);
+            fields.put("Status", status != null ? status : "Not Started");
+            fields.put("Priority", "Normal");
             
-            JsonNode result = salesforceApiService.createRecord("Task", jsonBody);
+            var result = salesforceApiService.createRecord("Task", fields);
             
             Map<String, Object> response = new HashMap<>();
             response.put("id", result.get("id").asText());
@@ -134,22 +110,9 @@ public class ApiController {
         try {
             logger.info("Updating account {} with: {}", id, updates);
             
-            // 构建更新字段
-            StringBuilder fields = new StringBuilder("{");
-            for (Map.Entry<String, Object> entry : updates.entrySet()) {
-                if (fields.length() > 1) fields.append(",");
-                fields.append(String.format("\"%s\":\"%s\"", entry.getKey(), entry.getValue()));
-            }
-            fields.append("}");
+            Map<String, Object> result = salesforceApiService.updateAccount(id, updates);
             
-            JsonNode result = salesforceApiService.updateRecord("Account", id, fields.toString());
-            
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("id", id);
-            response.put("updated", updates.keySet());
-            
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(result);
         } catch (Exception e) {
             logger.error("Error updating account", e);
             return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
@@ -160,7 +123,7 @@ public class ApiController {
     public ResponseEntity<?> refreshToken() {
         try {
             oauthClient.clearTokenCache();
-            var token = oauthClient.getAccessToken();
+            TokenInfo token = oauthClient.getAccessToken();
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "expiresIn", token.getExpiresIn()
@@ -175,19 +138,18 @@ public class ApiController {
         Map<String, Object> status = new HashMap<>();
         status.put("status", "UP");
         status.put("timestamp", System.currentTimeMillis());
-        status.put("service", "salesforce-java-app");
+        status.put("service", "salesforce-java-integration");
         status.put("version", "1.0.0");
         
         try {
-            // Test connection
-            oauthClient.getAccessToken();
+            TokenInfo token = oauthClient.getAccessToken();
             status.put("salesforce", "connected");
+            status.put("instance_url", token.getInstanceUrl());
         } catch (Exception e) {
             status.put("salesforce", "disconnected");
-            status.put("salesforceError", e.getMessage());
+            status.put("salesforce_error", e.getMessage());
         }
         
         return ResponseEntity.ok(status);
     }
 }
-
