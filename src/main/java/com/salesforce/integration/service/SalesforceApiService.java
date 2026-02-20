@@ -83,7 +83,50 @@ public class SalesforceApiService {
             throw new Exception("Query failed: " + response.getStatusCode());
         }
     }
-    
+
+    /**
+     * 根据ID获取Estimate
+     */
+    public Map<String, Object> getEstimateById(String estimateId) throws Exception {
+        logger.info("Getting estimate info for: {}", estimateId);
+        
+        TokenInfo tokenInfo = oauthClient.getAccessToken();
+        
+        String soql = "SELECT Id, Name, ffscpq__Is_Template__c, ffscpq__Start_Date__c " +
+                      "FROM ffscpq__Estimate__c WHERE Id = '" + estimateId + "'";
+        
+        String url = UriComponentsBuilder.fromHttpUrl(tokenInfo.getInstanceUrl())
+                .path("/services/data/" + apiVersion + "/query")
+                .queryParam("q", soql)
+                .build()
+                .toUriString();
+        
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(tokenInfo.getAccessToken());
+        
+        HttpEntity<String> request = new HttpEntity<>(headers);
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, request, String.class);
+        
+        if (response.getStatusCode().is2xxSuccessful()) {
+            JsonNode jsonResponse = objectMapper.readTree(response.getBody());
+            
+            if (jsonResponse.has("records") && jsonResponse.get("records").size() > 0) {
+                JsonNode record = jsonResponse.get("records").get(0);
+                
+                Map<String, Object> estimate = new HashMap<>();
+                estimate.put("Id", getJsonProperty(record, "Id"));
+                estimate.put("Name", getJsonProperty(record, "Name"));
+                estimate.put("ffscpq__Is_Template__c", getJsonProperty(record, "ffscpq__Is_Template__c"));
+                estimate.put("ffscpq__Start_Date__c", getJsonProperty(record, "ffscpq__Start_Date__c"));
+                
+                return estimate;
+            } else {
+                throw new Exception("estimate not found: " + estimateId);
+            }
+        } else {
+            throw new Exception("Query failed: " + response.getStatusCode());
+        }
+    }
     /**
      * 创建记录（Task, Account等）
      */
@@ -167,3 +210,4 @@ public class SalesforceApiService {
         return null;
     }
 }
+
