@@ -32,23 +32,26 @@ public class SalesforceApiService {
     }
     
     /**
-     * 执行SOQL查询
-     */
-    public JsonNode executeQuery(String soql) throws Exception {
-        TokenInfo tokenInfo = oauthClient.getAccessToken();
-        
-        // 正确编码SOQL查询
-        String encodedSoql = java.net.URLEncoder.encode(soql, StandardCharsets.UTF_8.toString());
-        String url = tokenInfo.getInstanceUrl() + "/services/data/" + apiVersion + 
-                    "/query?q=" + encodedSoql;
-        
-        logger.info("Executing query: {}", soql);
-        logger.info("Encoded URL: {}", url);
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(tokenInfo.getAccessToken());
-        
-        HttpEntity<String> request = new HttpEntity<>(headers);
+ * 执行SOQL查询
+ */
+public JsonNode executeQuery(String soql) throws Exception {
+    TokenInfo tokenInfo = oauthClient.getAccessToken();
+    
+    // 重要：只编码一次！
+    String encodedSoql = java.net.URLEncoder.encode(soql, StandardCharsets.UTF_8.toString());
+    String url = tokenInfo.getInstanceUrl() + "/services/data/" + apiVersion + 
+                "/query?q=" + encodedSoql;
+    
+    logger.info("Original SOQL: {}", soql);
+    logger.info("Encoded SOQL: {}", encodedSoql);
+    logger.info("Full URL: {}", url);
+    
+    HttpHeaders headers = new HttpHeaders();
+    headers.setBearerAuth(tokenInfo.getAccessToken());
+    
+    HttpEntity<String> request = new HttpEntity<>(headers);
+    
+    try {
         ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, request, String.class);
         
         if (response.getStatusCode().is2xxSuccessful()) {
@@ -56,7 +59,11 @@ public class SalesforceApiService {
         } else {
             throw new Exception("Query failed: " + response.getStatusCode() + " - " + response.getBody());
         }
+    } catch (Exception e) {
+        logger.error("Query execution failed", e);
+        throw e;
     }
+}
     
     /**
      * 根据ID获取Account
@@ -106,3 +113,4 @@ public class SalesforceApiService {
         return null;
     }
 }
+
