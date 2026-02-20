@@ -47,7 +47,7 @@ public class SalesforceApiService {
      */
     public Map<String, Object> getEstimateById(String estimateId) throws Exception {
         logger.info("Getting estimate info for: {}", estimateId);
-        return getRecordById("Estimate__c", estimateId);
+        return getRecordById("ffscpq_Estimate__c", estimateId);
     }
     
     /**
@@ -196,3 +196,4 @@ public class SalesforceApiService {
         return null;
     }
 }
+
