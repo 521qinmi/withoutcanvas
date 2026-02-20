@@ -34,77 +34,118 @@ public class SalesforceApiService {
     }
     
     /**
-     * 根据ID获取Account - 使用UriComponentsBuilder避免编码问题
+     * 根据ID获取Account
      */
     public Map<String, Object> getAccountById(String accountId) throws Exception {
         logger.info("Getting account info for: {}", accountId);
         
         TokenInfo tokenInfo = oauthClient.getAccessToken();
         
-        // 构建SOQL查询 - 使用最简单的格式
-        String soql = "SELECT Id, Name, Phone, Website, Industry FROM Account WHERE Id = '" + accountId + "'";
-        logger.info("SOQL: {}", soql);
+        String soql = "SELECT Id, Name, Phone, Website, Industry, Type, Description, AnnualRevenue " +
+                      "FROM Account WHERE Id = '" + accountId + "'";
         
-        // 使用UriComponentsBuilder正确构建URL
         String url = UriComponentsBuilder.fromHttpUrl(tokenInfo.getInstanceUrl())
                 .path("/services/data/" + apiVersion + "/query")
                 .queryParam("q", soql)
                 .build()
                 .toUriString();
         
-        logger.info("Request URL: {}", url);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(tokenInfo.getAccessToken());
+        
+        HttpEntity<String> request = new HttpEntity<>(headers);
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, request, String.class);
+        
+        if (response.getStatusCode().is2xxSuccessful()) {
+            JsonNode jsonResponse = objectMapper.readTree(response.getBody());
+            
+            if (jsonResponse.has("records") && jsonResponse.get("records").size() > 0) {
+                JsonNode record = jsonResponse.get("records").get(0);
+                
+                Map<String, Object> account = new HashMap<>();
+                account.put("Id", getJsonProperty(record, "Id"));
+                account.put("Name", getJsonProperty(record, "Name"));
+                account.put("Phone", getJsonProperty(record, "Phone"));
+                account.put("Website", getJsonProperty(record, "Website"));
+                account.put("Industry", getJsonProperty(record, "Industry"));
+                account.put("Type", getJsonProperty(record, "Type"));
+                account.put("Description", getJsonProperty(record, "Description"));
+                
+                if (record.has("AnnualRevenue") && !record.get("AnnualRevenue").isNull()) {
+                    account.put("AnnualRevenue", record.get("AnnualRevenue").asDouble());
+                }
+                
+                return account;
+            } else {
+                throw new Exception("Account not found: " + accountId);
+            }
+        } else {
+            throw new Exception("Query failed: " + response.getStatusCode());
+        }
+    }
+    
+    /**
+     * 创建记录（Task, Account等）
+     */
+    public JsonNode createRecord(String objectType, Map<String, Object> fields) throws Exception {
+        logger.info("Creating {} record with fields: {}", objectType, fields);
+        
+        TokenInfo tokenInfo = oauthClient.getAccessToken();
+        
+        String url = tokenInfo.getInstanceUrl() + "/services/data/" + apiVersion + "/sobjects/" + objectType;
         
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(tokenInfo.getAccessToken());
         headers.setContentType(MediaType.APPLICATION_JSON);
         
-        HttpEntity<String> request = new HttpEntity<>(headers);
+        String jsonBody = objectMapper.writeValueAsString(fields);
+        HttpEntity<String> request = new HttpEntity<>(jsonBody, headers);
         
-        try {
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, request, String.class);
-            
-            logger.info("Response Status: {}", response.getStatusCode());
-            
-            if (response.getStatusCode().is2xxSuccessful()) {
-                JsonNode jsonResponse = objectMapper.readTree(response.getBody());
-                
-                if (jsonResponse.has("records") && jsonResponse.get("records").size() > 0) {
-                    JsonNode record = jsonResponse.get("records").get(0);
-                    
-                    Map<String, Object> account = new HashMap<>();
-                    account.put("Id", getJsonProperty(record, "Id"));
-                    account.put("Name", getJsonProperty(record, "Name"));
-                    account.put("Phone", getJsonProperty(record, "Phone"));
-                    account.put("Website", getJsonProperty(record, "Website"));
-                    account.put("Industry", getJsonProperty(record, "Industry"));
-                    
-                    return account;
-                } else {
-                    throw new Exception("No records found for Account ID: " + accountId);
-                }
-            } else {
-                throw new Exception("Query failed with status: " + response.getStatusCode());
-            }
-        } catch (Exception e) {
-            logger.error("Error executing query", e);
-            throw e;
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
+        
+        if (response.getStatusCode().is2xxSuccessful()) {
+            return objectMapper.readTree(response.getBody());
+        } else {
+            throw new Exception("Create failed: " + response.getStatusCode() + " - " + response.getBody());
         }
     }
     
     /**
-     * 测试查询 - 使用最简单的查询
+     * 更新Account
+     */
+    public Map<String, Object> updateAccount(String accountId, Map<String, Object> updates) throws Exception {
+        logger.info("Updating account {} with: {}", accountId, updates);
+        
+        TokenInfo tokenInfo = oauthClient.getAccessToken();
+        
+        String url = tokenInfo.getInstanceUrl() + "/services/data/" + apiVersion + "/sobjects/Account/" + accountId;
+        
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(tokenInfo.getAccessToken());
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        
+        String jsonBody = objectMapper.writeValueAsString(updates);
+        HttpEntity<String> request = new HttpEntity<>(jsonBody, headers);
+        
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.PATCH, request, String.class);
+        
+        if (response.getStatusCode().is2xxSuccessful()) {
+            // 返回更新后的Account
+            return getAccountById(accountId);
+        } else {
+            throw new Exception("Update failed: " + response.getStatusCode() + " - " + response.getBody());
+        }
+    }
+    
+    /**
+     * 测试简单查询
      */
     public Map<String, Object> testSimpleQuery(String accountId) throws Exception {
         TokenInfo tokenInfo = oauthClient.getAccessToken();
         
-        // 最简单的查询
         String soql = "SELECT Id, Name FROM Account WHERE Id = '" + accountId + "'";
-        
-        // 手动编码，但只编码一次
         String encodedSoql = URLEncoder.encode(soql, StandardCharsets.UTF_8.toString());
         String url = tokenInfo.getInstanceUrl() + "/services/data/" + apiVersion + "/query?q=" + encodedSoql;
-        
-        logger.info("Test Query URL: {}", url);
         
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(tokenInfo.getAccessToken());
