@@ -72,62 +72,33 @@ public Map<String, Object> getEstimateById(String estimateId) throws Exception {
         throw new Exception("Estimate not found: " + estimateId + " in object " + objectName);
     }
 } 
-    /**
- * 通用记录查询 - 适用于任何对象
+ /**
+ * 通用记录查询 - 根据对象类型和ID查询记录
  */
 public Map<String, Object> getRecordById(String objectType, String recordId) throws Exception {
     logger.info("Getting {} record: {}", objectType, recordId);
     
     TokenInfo tokenInfo = oauthClient.getAccessToken();
     
-    // 不使用 FIELDS(ALL)，而是查询特定字段
-    // 先获取对象的字段列表，或者使用常用的字段
-    String soql;
-    
-    if (objectType.equals("Account")) {
-        soql = "SELECT Id, Name, Phone, Website, Industry, Type, Description, AnnualRevenue " +
-               "FROM Account WHERE Id = '" + recordId + "'";
-    } else if (objectType.equals("ffscpq_Estimate__c")) {
-        // 为 Estimate 对象查询常用字段
-        soql = "SELECT Id, Name, ffscpq_Amount__c, ffscpq_Status__c " +
-               "FROM ffscpq_Estimate__c WHERE Id = '" + recordId + "'";
-    } else {
-        // 通用回退 - 只查询Id和Name
-        soql = "SELECT Id, Name FROM " + objectType + " WHERE Id = '" + recordId + "'";
-    }
+    // 构建SOQL查询 - 直接使用传入的对象类型
+    String soql = "SELECT Id, Name FROM " + objectType + " WHERE Id = '" + recordId + "'";
     
     logger.info("SOQL: {}", soql);
+    logger.info("Object Type: {}", objectType);
     
     JsonNode result = executeQuery(soql);
     
     if (result != null && result.has("records") && result.get("records").size() > 0) {
         JsonNode record = result.get("records").get(0);
         
-        // 转换为Map
         Map<String, Object> resultMap = new HashMap<>();
-        Iterator<Map.Entry<String, JsonNode>> fields = record.fields();
-        
-        while (fields.hasNext()) {
-            Map.Entry<String, JsonNode> field = fields.next();
-            String fieldName = field.getKey();
-            JsonNode fieldValue = field.getValue();
-            
-            if (!fieldValue.isNull() && !fieldValue.isObject() && !fieldValue.isArray()) {
-                if (fieldValue.isTextual()) {
-                    resultMap.put(fieldName, fieldValue.asText());
-                } else if (fieldValue.isNumber()) {
-                    resultMap.put(fieldName, fieldValue.asDouble());
-                } else if (fieldValue.isBoolean()) {
-                    resultMap.put(fieldName, fieldValue.asBoolean());
-                } else {
-                    resultMap.put(fieldName, fieldValue.toString());
-                }
-            }
-        }
+        resultMap.put("Id", getJsonProperty(record, "Id"));
+        resultMap.put("Name", getJsonProperty(record, "Name"));
+        resultMap.put("ObjectType", objectType);
         
         return resultMap;
     } else {
-        throw new Exception("Record not found: " + recordId);
+        throw new Exception("Record not found: " + recordId + " in object " + objectType);
     }
 }
     
@@ -220,6 +191,7 @@ public Map<String, Object> getRecordById(String objectType, String recordId) thr
         return null;
     }
 }
+
 
 
 
