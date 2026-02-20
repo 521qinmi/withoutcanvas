@@ -5,9 +5,12 @@ server:
 
 salesforce:
   oauth:
-    client-id: 3MVG9xfrbKQ6hByvgri95mPlQsgW0fWHYADXlTzTriHpr7_q_1Gw_GMXTW2v3H2INhcm3wgOvvj2KycUAuqRs
-    client-secret: A03F6E80A410765ED16069C81732D01EBAEF4F7C280539A4E6AA41616E188FB1
-    token-url: https://bigdipper-pluto-4490.scratch.my.salesforce.com/services/oauth2/token
+    client-id: ${SF_CLIENT_ID}
+    client-secret: ${SF_CLIENT_SECRET}
+    username: ${SF_USERNAME}
+    password: ${SF_PASSWORD}
+    ##token-url: https://bigdipper-pluto-4490.scratch.my.salesforce.com/services/oauth2/token
+    token-url: ${SF_TOKEN_URL:https://test.salesforce.com/services/oauth2/token}
     api-version: v59.0
 
 cors:
