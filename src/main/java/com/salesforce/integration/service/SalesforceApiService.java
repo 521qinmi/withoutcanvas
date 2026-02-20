@@ -32,7 +32,69 @@ public class SalesforceApiService {
         this.restTemplate = new RestTemplate();
         this.objectMapper = new ObjectMapper();
     }
+    /**
+ * 通用记录查询 - 适用于任何对象
+ */
+public Map<String, Object> getRecordById(String objectType, String recordId) throws Exception {
+    logger.info("Getting {} record: {}", objectType, recordId);
     
+    TokenInfo tokenInfo = oauthClient.getAccessToken();
+    
+    // 使用SOQL查询，适用于任何对象
+    String soql = String.format("SELECT FIELDS(ALL) FROM %s WHERE Id = '%s' LIMIT 1", 
+                                objectType, recordId);
+    
+    String url = UriComponentsBuilder.fromHttpUrl(tokenInfo.getInstanceUrl())
+            .path("/services/data/" + apiVersion + "/query")
+            .queryParam("q", soql)
+            .build()
+            .toUriString();
+    
+    HttpHeaders headers = new HttpHeaders();
+    headers.setBearerAuth(tokenInfo.getAccessToken());
+    
+    HttpEntity<String> request = new HttpEntity<>(headers);
+    ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, request, String.class);
+    
+    if (response.getStatusCode().is2xxSuccessful()) {
+        JsonNode jsonResponse = objectMapper.readTree(response.getBody());
+        
+        if (jsonResponse.has("records") && jsonResponse.get("records").size() > 0) {
+            JsonNode record = jsonResponse.get("records").get(0);
+            
+            // 转换为Map
+            Map<String, Object> result = new HashMap<>();
+            record.fields().forEachRemaining(field -> {
+                JsonNode value = record.get(field);
+                if (!value.isNull()) {
+                    if (value.isTextual()) {
+                        result.put(field, value.asText());
+                    } else if (value.isNumber()) {
+                        result.put(field, value.asDouble());
+                    } else if (value.isBoolean()) {
+                        result.put(field, value.asBoolean());
+                    } else {
+                        result.put(field, value.toString());
+                    }
+                }
+            });
+            
+            return result;
+        } else {
+            throw new Exception("Record not found: " + recordId);
+        }
+    } else {
+        throw new Exception("Query failed: " + response.getStatusCode());
+    }
+}
+
+/**
+ * Estimate专用方法
+ */
+public Map<String, Object> getEstimateById(String estimateId) throws Exception {
+    logger.info("Getting estimate: {}", estimateId);
+    return getRecordById("Estimate__c", estimateId);
+}
     /**
      * 根据ID获取Account
      */
@@ -84,49 +146,7 @@ public class SalesforceApiService {
         }
     }
 
-    /**
-     * 根据ID获取Estimate
-     */
-    public Map<String, Object> getEstimateById(String estimateId) throws Exception {
-        logger.info("Getting estimate info for: {}", estimateId);
-        
-        TokenInfo tokenInfo = oauthClient.getAccessToken();
-        
-        String soql = "SELECT Id, Name, ffscpq__Is_Template__c, ffscpq__Start_Date__c " +
-                      "FROM ffscpq__Estimate__c WHERE Id = '" + estimateId + "'";
-        
-        String url = UriComponentsBuilder.fromHttpUrl(tokenInfo.getInstanceUrl())
-                .path("/services/data/" + apiVersion + "/query")
-                .queryParam("q", soql)
-                .build()
-                .toUriString();
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(tokenInfo.getAccessToken());
-        
-        HttpEntity<String> request = new HttpEntity<>(headers);
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, request, String.class);
-        
-        if (response.getStatusCode().is2xxSuccessful()) {
-            JsonNode jsonResponse = objectMapper.readTree(response.getBody());
-            
-            if (jsonResponse.has("records") && jsonResponse.get("records").size() > 0) {
-                JsonNode record = jsonResponse.get("records").get(0);
-                
-                Map<String, Object> estimate = new HashMap<>();
-                estimate.put("Id", getJsonProperty(record, "Id"));
-                estimate.put("Name", getJsonProperty(record, "Name"));
-                estimate.put("ffscpq__Is_Template__c", getJsonProperty(record, "ffscpq__Is_Template__c"));
-                estimate.put("ffscpq__Start_Date__c", getJsonProperty(record, "ffscpq__Start_Date__c"));
-                
-                return estimate;
-            } else {
-                throw new Exception("estimate not found: " + estimateId);
-            }
-        } else {
-            throw new Exception("Query failed: " + response.getStatusCode());
-        }
-    }
+    
     /**
      * 创建记录（Task, Account等）
      */
@@ -210,4 +230,5 @@ public class SalesforceApiService {
         return null;
     }
 }
+
 
