@@ -81,6 +81,23 @@ public class SalesforceApiService {
             account.put("Description", getJsonProperty(record, "Description"));
             account.put("AnnualRevenue", getJsonProperty(record, "AnnualRevenue"));
             
+            // 添加地址信息
+            Map<String, String> billingAddress = new HashMap<>();
+            billingAddress.put("street", getJsonProperty(record, "BillingStreet"));
+            billingAddress.put("city", getJsonProperty(record, "BillingCity"));
+            billingAddress.put("state", getJsonProperty(record, "BillingState"));
+            billingAddress.put("postalCode", getJsonProperty(record, "BillingPostalCode"));
+            billingAddress.put("country", getJsonProperty(record, "BillingCountry"));
+            account.put("BillingAddress", billingAddress);
+            
+            // 添加所有者信息
+            if (record.has("Owner")) {
+                JsonNode owner = record.get("Owner");
+                Map<String, String> ownerInfo = new HashMap<>();
+                ownerInfo.put("Name", getJsonProperty(owner, "Name"));
+                account.put("Owner", ownerInfo);
+            }
+            
             return account;
         } else {
             throw new Exception("Account not found: " + accountId);
@@ -112,7 +129,7 @@ public class SalesforceApiService {
     }
     
     /**
-     * 更新Account
+     * 更新Account - 这个方法确保存在
      */
     public Map<String, Object> updateAccount(String accountId, Map<String, Object> updates) throws Exception {
         logger.info("Updating account {} with: {}", accountId, updates);
@@ -139,30 +156,10 @@ public class SalesforceApiService {
     }
     
     /**
-     * 删除记录
-     */
-    public void deleteRecord(String objectType, String recordId) throws Exception {
-        TokenInfo tokenInfo = oauthClient.getAccessToken();
-        
-        String url = tokenInfo.getInstanceUrl() + "/services/data/" + apiVersion + "/sobjects/" + objectType + "/" + recordId;
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(tokenInfo.getAccessToken());
-        
-        HttpEntity<String> request = new HttpEntity<>(headers);
-        
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.DELETE, request, String.class);
-        
-        if (!response.getStatusCode().is2xxSuccessful()) {
-            throw new Exception("Delete failed: " + response.getStatusCode());
-        }
-    }
-    
-    /**
      * 获取JSON属性，处理null值
      */
     private String getJsonProperty(JsonNode node, String property) {
-        if (node.has(property) && !node.get(property).isNull()) {
+        if (node != null && node.has(property) && !node.get(property).isNull()) {
             return node.get(property).asText();
         }
         return null;
