@@ -65,43 +65,41 @@ public JsonNode executeQuery(String soql) throws Exception {
     }
 }
     
-    /**
-     * 根据ID获取Account
-     */
-    public Map<String, Object> getAccountById(String accountId) throws Exception {
-        logger.info("Getting account info for: {}", accountId);
+   /**
+ * 根据ID获取Account
+ */
+public Map<String, Object> getAccountById(String accountId) throws Exception {
+    logger.info("Getting account info for: {}", accountId);
+    
+    // 构建干净的SOQL查询
+    String soql = "SELECT Id, Name, Phone, Website, Industry, Type, Description, AnnualRevenue " +
+                  "FROM Account WHERE Id = '" + accountId + "'";
+    
+    logger.info("SOQL Query: {}", soql);
+    
+    JsonNode result = executeQuery(soql);
+    
+    if (result != null && result.has("records") && result.get("records").size() > 0) {
+        JsonNode record = result.get("records").get(0);
         
-        // 构建正确的SOQL查询 - 确保字段之间用逗号分隔
-        String soql = String.format(
-            "SELECT Id, Name, Phone, Website, Industry, Type, Description, AnnualRevenue " +
-            "FROM Account WHERE Id = '%s'", 
-            accountId
-        );
+        Map<String, Object> account = new HashMap<>();
+        account.put("Id", getJsonProperty(record, "Id"));
+        account.put("Name", getJsonProperty(record, "Name"));
+        account.put("Phone", getJsonProperty(record, "Phone"));
+        account.put("Website", getJsonProperty(record, "Website"));
+        account.put("Industry", getJsonProperty(record, "Industry"));
+        account.put("Type", getJsonProperty(record, "Type"));
+        account.put("Description", getJsonProperty(record, "Description"));
         
-        JsonNode result = executeQuery(soql);
-        
-        if (result != null && result.has("records") && result.get("records").size() > 0) {
-            JsonNode record = result.get("records").get(0);
-            
-            Map<String, Object> account = new HashMap<>();
-            account.put("Id", getJsonProperty(record, "Id"));
-            account.put("Name", getJsonProperty(record, "Name"));
-            account.put("Phone", getJsonProperty(record, "Phone"));
-            account.put("Website", getJsonProperty(record, "Website"));
-            account.put("Industry", getJsonProperty(record, "Industry"));
-            account.put("Type", getJsonProperty(record, "Type"));
-            account.put("Description", getJsonProperty(record, "Description"));
-            
-            // 处理AnnualRevenue可能为数字的情况
-            if (record.has("AnnualRevenue") && !record.get("AnnualRevenue").isNull()) {
-                account.put("AnnualRevenue", record.get("AnnualRevenue").asDouble());
-            }
-            
-            return account;
-        } else {
-            throw new Exception("Account not found: " + accountId);
+        if (record.has("AnnualRevenue") && !record.get("AnnualRevenue").isNull()) {
+            account.put("AnnualRevenue", record.get("AnnualRevenue").asDouble());
         }
+        
+        return account;
+    } else {
+        throw new Exception("Account not found: " + accountId);
     }
+}
     
     /**
      * 获取JSON属性，处理null值
@@ -113,4 +111,5 @@ public JsonNode executeQuery(String soql) throws Exception {
         return null;
     }
 }
+
 
