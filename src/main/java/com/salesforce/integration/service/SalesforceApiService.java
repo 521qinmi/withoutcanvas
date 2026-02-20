@@ -42,19 +42,22 @@ public class SalesforceApiService {
         return getRecordById("Account", accountId);
     }
     
-    /**
- * 获取Estimate记录 - 使用正确的字段
+ /**
+ * 获取Estimate记录 - 修正字段名
  */
 public Map<String, Object> getEstimateById(String estimateId) throws Exception {
     logger.info("Getting estimate info for: {}", estimateId);
     
     TokenInfo tokenInfo = oauthClient.getAccessToken();
     
-    // 查询Estimate对象的实际字段
-    // 请根据您的实际字段名修改
-    String soql = "SELECT Id, Name, ffscpq_Amount__c, ffscpq_Status__c, " +
-                  "ffscpq_Date__c, ffscpq_Customer__c, ffscpq_Description__c " +
-                  "FROM ffscpq_Estimate__c WHERE Id = '" + estimateId + "'";
+    // 先查询所有可用字段来调试
+    String debugSoql = "SELECT Id FROM ffscpq_Estimate__c WHERE Id = '" + estimateId + "'";
+    logger.info("Debug query: {}", debugSoql);
+    
+    // 使用最简单的查询，只查Id
+    String soql = "SELECT Id, Name FROM ffscpq_Estimate__c WHERE Id = '" + estimateId + "'";
+    
+    logger.info("Final SOQL: {}", soql);
     
     JsonNode result = executeQuery(soql);
     
@@ -64,11 +67,6 @@ public Map<String, Object> getEstimateById(String estimateId) throws Exception {
         Map<String, Object> estimate = new HashMap<>();
         estimate.put("Id", getJsonProperty(record, "Id"));
         estimate.put("Name", getJsonProperty(record, "Name"));
-        estimate.put("Amount", getJsonProperty(record, "ffscpq_Amount__c"));
-        estimate.put("Status", getJsonProperty(record, "ffscpq_Status__c"));
-        estimate.put("Date", getJsonProperty(record, "ffscpq_Date__c"));
-        estimate.put("Customer", getJsonProperty(record, "ffscpq_Customer__c"));
-        estimate.put("Description", getJsonProperty(record, "ffscpq_Description__c"));
         
         return estimate;
     } else {
@@ -224,6 +222,7 @@ public Map<String, Object> getRecordById(String objectType, String recordId) thr
         return null;
     }
 }
+
 
 
 
