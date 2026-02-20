@@ -14,7 +14,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api")
 @CrossOrigin(origins = {
-    "https://bigdipper-pluto-4490.scratch.lightning.force.com/",
+    "https://bigdipper-pluto-4490.scratch.lightning.force.com",
     "https://bigdipper-pluto-4490.scratch.my.salesforce.com"
 })
 public class ApiController {
@@ -116,3 +116,4 @@ public class ApiController {
         return ResponseEntity.ok(status);
     }
 }
+
