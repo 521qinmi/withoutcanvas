@@ -121,10 +121,11 @@ public class SalesforceOAuthClient {
     private TokenInfo getMockToken() {
         TokenInfo mockToken = new TokenInfo();
         mockToken.setAccessToken("mock-access-token");
-        mockToken.setInstanceUrl("https://yourdomain.my.salesforce.com");
+        mockToken.setInstanceUrl("https://bigdipper-pluto-4490.scratch.my.salesforce.com");
         mockToken.setTokenType("Bearer");
         mockToken.setExpiresIn(3600);
         mockToken.setIssuedAt(System.currentTimeMillis());
         return mockToken;
     }
 }
+
