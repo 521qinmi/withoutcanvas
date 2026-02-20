@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>X-Frame-Options Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f8ff;
+            padding: 20px;
+            text-align: center;
+        }
+        .success {
+            color: green;
+            font-size: 24px;
+            margin: 20px;
+        }
+        .info {
+            background: white;
+            border: 2px solid #0070d2;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="success">✅ 成功加载！</div>
+    <div class="info">
+        <h3>X-Frame-Options 测试页面</h3>
+        <p>这个页面应该能在 iframe 中显示</p>
+        <p>当前时间: <span id="time"></span></p>
+    </div>
+    
+    <script>
+        document.getElementById('time').textContent = new Date().toLocaleString();
+        console.log('测试页面已加载');
+        
+        // 显示X-Frame-Options信息
+        console.log('Document referrer:', document.referrer);
+    </script>
+</body>
+</html>
