@@ -48,7 +48,7 @@ public class SalesforceApiService {
         if (response.getStatusCode().is2xxSuccessful()) {
             return objectMapper.readTree(response.getBody());
         } else {
-            throw new Exception("Query failed: " + response.getStatusCode());
+            throw new Exception("Query failed: " + response.getStatusCode() + " - " + response.getBody());
         }
     }
     
@@ -56,47 +56,41 @@ public class SalesforceApiService {
      * 根据ID获取Account
      */
     public Map<String, Object> getAccountById(String accountId) throws Exception {
-    logger.info("Getting account info for: {}", accountId);
-    
-    TokenInfo tokenInfo = oauthClient.getAccessToken();
-    logger.info("Token obtained, instance URL: {}", tokenInfo.getInstanceUrl());
-    
-    // 先测试最简单的查询，看API是否工作
-    String testSoql = "SELECT Id FROM Account LIMIT 1";
-    JsonNode testResult = executeQuery(testSoql);
-    logger.info("Test query result: {}", testResult);
-    
-    // 然后查询具体的Account
-    String soql = String.format(
-        "SELECT Id, Name, Phone, Website, Industry, Type, Description " +
-        "FROM Account WHERE Id = '%s'", 
-        accountId
-    );
-    
-    JsonNode result = executeQuery(soql);
-    
-    if (result != null && result.has("records") && result.get("records").size() > 0) {
-        JsonNode record = result.get("records").get(0);
+        logger.info("Getting account info for: {}", accountId);
         
-        Map<String, Object> account = new HashMap<>();
-        account.put("Id", getJsonProperty(record, "Id"));
-        account.put("Name", getJsonProperty(record, "Name"));
-        account.put("Phone", getJsonProperty(record, "Phone"));
-        account.put("Website", getJsonProperty(record, "Website"));
-        account.put("Industry", getJsonProperty(record, "Industry"));
-        account.put("Type", getJsonProperty(record, "Type"));
-        account.put("Description", getJsonProperty(record, "Description"));
+        String soql = String.format(
+            "SELECT Id, Name, Phone, Website, Industry, Type, Description, " +
+            "AnnualRevenue, BillingStreet, BillingCity, BillingState, BillingPostalCode, " +
+            "BillingCountry, Owner.Name, CreatedDate, LastModifiedDate " +
+            "FROM Account WHERE Id = '%s'", 
+            accountId
+        );
         
-        return account;
-    } else {
-        throw new Exception("Account not found: " + accountId);
+        JsonNode result = executeQuery(soql);
+        
+        if (result != null && result.has("records") && result.get("records").size() > 0) {
+            JsonNode record = result.get("records").get(0);
+            
+            Map<String, Object> account = new HashMap<>();
+            account.put("Id", getJsonProperty(record, "Id"));
+            account.put("Name", getJsonProperty(record, "Name"));
+            account.put("Phone", getJsonProperty(record, "Phone"));
+            account.put("Website", getJsonProperty(record, "Website"));
+            account.put("Industry", getJsonProperty(record, "Industry"));
+            account.put("Type", getJsonProperty(record, "Type"));
+            account.put("Description", getJsonProperty(record, "Description"));
+            account.put("AnnualRevenue", getJsonProperty(record, "AnnualRevenue"));
+            
+            return account;
+        } else {
+            throw new Exception("Account not found: " + accountId);
+        }
     }
-}
     
     /**
      * 创建记录
      */
-    public JsonNode createRecord(String objectType, String jsonBody) throws Exception {
+    public JsonNode createRecord(String objectType, Map<String, Object> fields) throws Exception {
         TokenInfo tokenInfo = oauthClient.getAccessToken();
         
         String url = tokenInfo.getInstanceUrl() + "/services/data/" + apiVersion + "/sobjects/" + objectType;
@@ -105,6 +99,7 @@ public class SalesforceApiService {
         headers.setBearerAuth(tokenInfo.getAccessToken());
         headers.setContentType(MediaType.APPLICATION_JSON);
         
+        String jsonBody = objectMapper.writeValueAsString(fields);
         HttpEntity<String> request = new HttpEntity<>(jsonBody, headers);
         
         ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
@@ -112,31 +107,7 @@ public class SalesforceApiService {
         if (response.getStatusCode().is2xxSuccessful()) {
             return objectMapper.readTree(response.getBody());
         } else {
-            throw new Exception("Create failed: " + response.getStatusCode());
-        }
-    }
-    
-    /**
-     * 更新记录
-     */
-    public JsonNode updateRecord(String objectType, String recordId, String jsonBody) throws Exception {
-        TokenInfo tokenInfo = oauthClient.getAccessToken();
-        
-        String url = tokenInfo.getInstanceUrl() + "/services/data/" + apiVersion + "/sobjects/" + 
-                    objectType + "/" + recordId;
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(tokenInfo.getAccessToken());
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        
-        HttpEntity<String> request = new HttpEntity<>(jsonBody, headers);
-        
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.PATCH, request, String.class);
-        
-        if (response.getStatusCode().is2xxSuccessful()) {
-            return response.getBody() != null ? objectMapper.readTree(response.getBody()) : null;
-        } else {
-            throw new Exception("Update failed: " + response.getStatusCode());
+            throw new Exception("Create failed: " + response.getStatusCode() + " - " + response.getBody());
         }
     }
     
@@ -147,4 +118,3 @@ public class SalesforceApiService {
         return null;
     }
 }
-
