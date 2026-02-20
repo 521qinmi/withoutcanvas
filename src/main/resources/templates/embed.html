@@ -278,34 +278,88 @@
         }
         
         // ========== API Calls ==========
-        function fetchAccount() {
-            log('🔄 Fetching account data...', 'API');
+       function fetchAccount() {
+    log('🔄 Fetching record data...', 'API');
+    
+    // 根据recordId前缀确定对象类型和对应的API端点
+    let apiEndpoint = '';
+    let objectType = '';
+    
+    if (!config.recordId) {
+        log('❌ No record ID provided', 'ERROR');
+        return;
+    }
+    
+    // 获取recordId的前缀（前3个字符）
+    const recordPrefix = config.recordId.substring(0, 3);
+    
+    // 根据前缀映射到不同的对象类型和API端点
+    switch(recordPrefix) {
+        case '001': // Account
+            apiEndpoint = '/api/account/';
+            objectType = 'Account';
+            break;
+        case '0Q0': // Estimate (假设的prefix，请根据实际情况修改)
+        case '0QE': // 另一个可能的Estimate前缀
+            apiEndpoint = '/api/estimate/';
+            objectType = 'Estimate';
+            break;
+        case '003': // Contact
+            apiEndpoint = '/api/contact/';
+            objectType = 'Contact';
+            break;
+        case '006': // Opportunity
+            apiEndpoint = '/api/opportunity/';
+            objectType = 'Opportunity';
+            break;
+        case '500': // Case
+            apiEndpoint = '/api/case/';
+            objectType = 'Case';
+            break;
+        case '00Q': // Lead
+            apiEndpoint = '/api/lead/';
+            objectType = 'Lead';
+            break;
+        default:
+            // 默认使用account端点
+            apiEndpoint = '/api/account/';
+            objectType = 'Account (default)';
+            log(`⚠️ Unknown record prefix: ${recordPrefix}, using default account endpoint`, 'WARN');
+    }
+    
+    log(`📋 Record type detected: ${objectType} (prefix: ${recordPrefix})`, 'INFO');
+    log(`🌐 API endpoint: ${apiEndpoint + config.recordId}`, 'INFO');
+    
+    // 调用相应的API
+    fetch(apiEndpoint + config.recordId)
+        .then(res => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+        })
+        .then(data => {
+            document.getElementById('accountData').textContent = 
+                JSON.stringify(data, null, 2);
+            log(`✅ ${objectType} data retrieved successfully`, 'SUCCESS');
+            document.getElementById('apiStatus').textContent = '✅';
             
-            fetch('/api/account/' + config.recordId)
-                .then(res => {
-                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                    return res.json();
-                })
-                .then(data => {
-                    document.getElementById('accountData').textContent = 
-                        JSON.stringify(data, null, 2);
-                    log('✅ Account data retrieved successfully', 'SUCCESS');
-                    document.getElementById('apiStatus').textContent = '✅';
-                    
-                    // Send to Salesforce
-                    sendToParent({
-                        type: 'accountData',
-                        data: data,
-                        from: 'java-app'
-                    });
-                })
-                .catch(err => {
-                    log('❌ API Error: ' + err.message, 'ERROR');
-                    document.getElementById('apiStatus').textContent = '❌';
-                    document.getElementById('accountData').textContent = 
-                        'Error: ' + err.message + '\n\nPlease check:\n1. API endpoint exists\n2. Network connection\n3. Console errors';
-                });
-        }
+            // 根据对象类型发送不同的消息类型到Salesforce
+            const messageType = objectType === 'Estimate' ? 'estimateData' : 'recordData';
+            
+            // Send to Salesforce
+            sendToParent({
+                type: messageType,
+                objectType: objectType,
+                data: data,
+                from: 'java-app'
+            });
+        })
+        .catch(err => {
+            log(`❌ API Error (${objectType}): ` + err.message, 'ERROR');
+            document.getElementById('apiStatus').textContent = '❌';
+            document.getElementById('accountData').textContent = 
+                `Error fetching ${objectType} data: ${err.message}\n\nPlease check:\n1. API endpoint exists (/api/${objectType.toLowerCase()}/)\n2. Network connection\n3. Console errors`;
+        });
+}
         
         function testAPI() {
             log('🔧 Testing API connection...', 'API');
@@ -436,4 +490,5 @@
     </script>
 </body>
 </html>
+
 
