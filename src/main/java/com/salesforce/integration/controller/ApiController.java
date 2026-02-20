@@ -33,7 +33,8 @@ public class ApiController {
             "timestamp", System.currentTimeMillis()
         ));
     }
-    
+
+    /*
     @GetMapping("/account/{id}")
     public ResponseEntity<?> getAccount(@PathVariable String id) {
         logger.info("Get account: {}", id);
@@ -48,7 +49,23 @@ public class ApiController {
         
         return ResponseEntity.ok(account);
     }
-    
+    */
+    @GetMapping("/account/{id}")
+    public ResponseEntity<?> getAccount(@PathVariable String id) {
+        try {
+            logger.info("Getting account from Salesforce: {}", id);
+            Map<String, Object> account = salesforceService.getAccountById(id);
+            return ResponseEntity.ok(account);
+        } catch (Exception e) {
+            logger.error("Error getting account: {}", e.getMessage(), e);
+            
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            error.put("accountId", id);
+            error.put("status", "failed");
+            return ResponseEntity.status(500).body(error);
+        }
+    }
     @PostMapping("/message")
     public ResponseEntity<?> receiveMessage(@RequestBody Map<String, Object> message) {
         logger.info("Received message: {}", message);
@@ -72,3 +89,4 @@ public class ApiController {
         return ResponseEntity.ok(debug);
     }
 }
+
