@@ -316,9 +316,9 @@ function fetchRecord() {
             apiEndpoint = 'lead';
             objectType = 'Lead';
             break;
-        case 'a6W': // ffscpq_Estimate__c
+        case 'a6W': // ffscpq__Estimate__c
             apiEndpoint = 'estimate';
-            objectType = 'ffscpq_Estimate__c';
+            objectType = 'ffscpq__Estimate__c';
             break;  
         default:
             apiEndpoint = 'account';
@@ -369,7 +369,7 @@ function fetchRecord() {
         // 自定义错误提示
         let errorMessage = `Error fetching ${objectType} data: ${err.message}`;
         
-        if (objectType === 'ffscpq_Estimate__c') {
+        if (objectType === 'ffscpq__Estimate__c') {
             errorMessage += `\n\nPlease check:\n1. API endpoint exists (/api/estimate/${config.recordId})\n2. Network connection\n3. Console errors`;
         } else {
             errorMessage += `\n\nPlease check:\n1. API endpoint exists (/api/${apiEndpoint}/${config.recordId})\n2. Network connection\n3. Console errors`;
@@ -508,6 +508,7 @@ function fetchRecord() {
     </script>
 </body>
 </html>
+
 
 
 
