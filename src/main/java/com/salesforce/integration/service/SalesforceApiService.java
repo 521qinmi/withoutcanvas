@@ -111,6 +111,56 @@ public class SalesforceApiService {
         }
     }
     
+    /**
+     * 更新Account
+     */
+    public Map<String, Object> updateAccount(String accountId, Map<String, Object> updates) throws Exception {
+        logger.info("Updating account {} with: {}", accountId, updates);
+        
+        TokenInfo tokenInfo = oauthClient.getAccessToken();
+        
+        String url = tokenInfo.getInstanceUrl() + "/services/data/" + apiVersion + "/sobjects/Account/" + accountId;
+        
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(tokenInfo.getAccessToken());
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        
+        String jsonBody = objectMapper.writeValueAsString(updates);
+        HttpEntity<String> request = new HttpEntity<>(jsonBody, headers);
+        
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.PATCH, request, String.class);
+        
+        if (response.getStatusCode().is2xxSuccessful()) {
+            // 返回更新后的Account
+            return getAccountById(accountId);
+        } else {
+            throw new Exception("Update failed: " + response.getStatusCode() + " - " + response.getBody());
+        }
+    }
+    
+    /**
+     * 删除记录
+     */
+    public void deleteRecord(String objectType, String recordId) throws Exception {
+        TokenInfo tokenInfo = oauthClient.getAccessToken();
+        
+        String url = tokenInfo.getInstanceUrl() + "/services/data/" + apiVersion + "/sobjects/" + objectType + "/" + recordId;
+        
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(tokenInfo.getAccessToken());
+        
+        HttpEntity<String> request = new HttpEntity<>(headers);
+        
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.DELETE, request, String.class);
+        
+        if (!response.getStatusCode().is2xxSuccessful()) {
+            throw new Exception("Delete failed: " + response.getStatusCode());
+        }
+    }
+    
+    /**
+     * 获取JSON属性，处理null值
+     */
     private String getJsonProperty(JsonNode node, String property) {
         if (node.has(property) && !node.get(property).isNull()) {
             return node.get(property).asText();
