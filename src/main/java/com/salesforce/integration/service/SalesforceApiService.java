@@ -10,6 +10,7 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -36,8 +37,13 @@ public class SalesforceApiService {
     public JsonNode executeQuery(String soql) throws Exception {
         TokenInfo tokenInfo = oauthClient.getAccessToken();
         
+        // 正确编码SOQL查询
+        String encodedSoql = java.net.URLEncoder.encode(soql, StandardCharsets.UTF_8.toString());
         String url = tokenInfo.getInstanceUrl() + "/services/data/" + apiVersion + 
-                    "/query?q=" + java.net.URLEncoder.encode(soql, "UTF-8");
+                    "/query?q=" + encodedSoql;
+        
+        logger.info("Executing query: {}", soql);
+        logger.info("Encoded URL: {}", url);
         
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(tokenInfo.getAccessToken());
@@ -58,10 +64,9 @@ public class SalesforceApiService {
     public Map<String, Object> getAccountById(String accountId) throws Exception {
         logger.info("Getting account info for: {}", accountId);
         
+        // 构建正确的SOQL查询 - 确保字段之间用逗号分隔
         String soql = String.format(
-            "SELECT Id, Name, Phone, Website, Industry, Type, Description, " +
-            "AnnualRevenue, BillingStreet, BillingCity, BillingState, BillingPostalCode, " +
-            "BillingCountry, Owner.Name, CreatedDate, LastModifiedDate " +
+            "SELECT Id, Name, Phone, Website, Industry, Type, Description, AnnualRevenue " +
             "FROM Account WHERE Id = '%s'", 
             accountId
         );
@@ -79,79 +84,15 @@ public class SalesforceApiService {
             account.put("Industry", getJsonProperty(record, "Industry"));
             account.put("Type", getJsonProperty(record, "Type"));
             account.put("Description", getJsonProperty(record, "Description"));
-            account.put("AnnualRevenue", getJsonProperty(record, "AnnualRevenue"));
             
-            // 添加地址信息
-            Map<String, String> billingAddress = new HashMap<>();
-            billingAddress.put("street", getJsonProperty(record, "BillingStreet"));
-            billingAddress.put("city", getJsonProperty(record, "BillingCity"));
-            billingAddress.put("state", getJsonProperty(record, "BillingState"));
-            billingAddress.put("postalCode", getJsonProperty(record, "BillingPostalCode"));
-            billingAddress.put("country", getJsonProperty(record, "BillingCountry"));
-            account.put("BillingAddress", billingAddress);
-            
-            // 添加所有者信息
-            if (record.has("Owner")) {
-                JsonNode owner = record.get("Owner");
-                Map<String, String> ownerInfo = new HashMap<>();
-                ownerInfo.put("Name", getJsonProperty(owner, "Name"));
-                account.put("Owner", ownerInfo);
+            // 处理AnnualRevenue可能为数字的情况
+            if (record.has("AnnualRevenue") && !record.get("AnnualRevenue").isNull()) {
+                account.put("AnnualRevenue", record.get("AnnualRevenue").asDouble());
             }
             
             return account;
         } else {
             throw new Exception("Account not found: " + accountId);
-        }
-    }
-    
-    /**
-     * 创建记录
-     */
-    public JsonNode createRecord(String objectType, Map<String, Object> fields) throws Exception {
-        TokenInfo tokenInfo = oauthClient.getAccessToken();
-        
-        String url = tokenInfo.getInstanceUrl() + "/services/data/" + apiVersion + "/sobjects/" + objectType;
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(tokenInfo.getAccessToken());
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        
-        String jsonBody = objectMapper.writeValueAsString(fields);
-        HttpEntity<String> request = new HttpEntity<>(jsonBody, headers);
-        
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
-        
-        if (response.getStatusCode().is2xxSuccessful()) {
-            return objectMapper.readTree(response.getBody());
-        } else {
-            throw new Exception("Create failed: " + response.getStatusCode() + " - " + response.getBody());
-        }
-    }
-    
-    /**
-     * 更新Account - 这个方法确保存在
-     */
-    public Map<String, Object> updateAccount(String accountId, Map<String, Object> updates) throws Exception {
-        logger.info("Updating account {} with: {}", accountId, updates);
-        
-        TokenInfo tokenInfo = oauthClient.getAccessToken();
-        
-        String url = tokenInfo.getInstanceUrl() + "/services/data/" + apiVersion + "/sobjects/Account/" + accountId;
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(tokenInfo.getAccessToken());
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        
-        String jsonBody = objectMapper.writeValueAsString(updates);
-        HttpEntity<String> request = new HttpEntity<>(jsonBody, headers);
-        
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.PATCH, request, String.class);
-        
-        if (response.getStatusCode().is2xxSuccessful()) {
-            // 返回更新后的Account
-            return getAccountById(accountId);
-        } else {
-            throw new Exception("Update failed: " + response.getStatusCode() + " - " + response.getBody());
         }
     }
     
