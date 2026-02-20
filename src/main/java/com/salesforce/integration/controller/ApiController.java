@@ -34,7 +34,7 @@ public class ApiController {
         return ResponseEntity.ok(response);
     }
     
-    @GetMapping("/account/{id}")
+    /*@GetMapping("/account/{id}")
     public ResponseEntity<?> getAccount(@PathVariable String id) {
         try {
             logger.info("Getting account from Salesforce: {}", id);
@@ -48,6 +48,53 @@ public class ApiController {
             error.put("accountId", id);
             error.put("status", "failed");
             return ResponseEntity.status(500).body(error);
+        }
+    }*/
+    @GetMapping("/account/{id}")
+    public ResponseEntity<?> getAccount(@PathVariable String id) {
+        logger.info("========== GET ACCOUNT REQUEST ==========");
+        logger.info("Account ID: {}", id);
+        
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            // 记录开始时间
+            long startTime = System.currentTimeMillis();
+            
+            // 尝试获取token
+            logger.info("Step 1: Getting access token...");
+            var token = oauthClient.getAccessToken();
+            logger.info("Step 1 Complete - Instance URL: {}", token.getInstanceUrl());
+            
+            // 尝试获取account
+            logger.info("Step 2: Fetching account from Salesforce...");
+            Map<String, Object> account = salesforceApiService.getAccountById(id);
+            logger.info("Step 2 Complete - Account found: {}", account.get("Name"));
+            
+            long duration = System.currentTimeMillis() - startTime;
+            logger.info("Total time: {}ms", duration);
+            
+            return ResponseEntity.ok(account);
+            
+        } catch (Exception e) {
+            logger.error("❌ ERROR in getAccount:", e);
+            
+            response.put("error", e.getMessage());
+            response.put("errorType", e.getClass().getSimpleName());
+            response.put("accountId", id);
+            response.put("timestamp", System.currentTimeMillis());
+            
+            // 如果是HTTP错误，尝试提取更多信息
+            if (e instanceof org.springframework.web.client.HttpClientErrorException) {
+                org.springframework.web.client.HttpClientErrorException httpEx = 
+                    (org.springframework.web.client.HttpClientErrorException) e;
+                response.put("httpStatus", httpEx.getStatusCode().value());
+                response.put("httpResponse", httpEx.getResponseBodyAsString());
+            }
+            
+            return ResponseEntity.status(500).body(response);
+        } finally {
+            logger.info("========== END REQUEST ==========");
         }
     }
     
@@ -143,3 +190,4 @@ public class ApiController {
         return ResponseEntity.ok(status);
     }
 }
+
