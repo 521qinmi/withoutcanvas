@@ -82,7 +82,7 @@ public ResponseEntity<?> getEstimate(@PathVariable String id) {
     try {
         logger.info("Getting estimate via estimate endpoint: {}", id);
         // 直接调用通用方法，但指定对象类型
-        Map<String, Object> estimate = salesforceApiService.getRecordById("ffscpq_Estimate__c", id);
+        Map<String, Object> estimate = salesforceApiService.getEstimateById("ffscpq_Estimate__c", id);
         return ResponseEntity.ok(estimate);
     } catch (Exception e) {
         logger.error("Error getting estimate: {}", e.getMessage(), e);
@@ -117,5 +117,6 @@ public ResponseEntity<?> getEstimate(@PathVariable String id) {
     
     // ... 其他方法保持不变 (createTask, updateAccount, refreshToken, health)
 }
+
 
 
