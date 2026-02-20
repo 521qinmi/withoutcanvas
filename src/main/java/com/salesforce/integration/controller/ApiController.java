@@ -34,27 +34,27 @@ public class ApiController {
         return ResponseEntity.ok(response);
     }
     
-    @GetMapping("/auth/test")
-    public ResponseEntity<?> testAuth() {
-        Map<String, Object> result = new HashMap<>();
+    // @GetMapping("/auth/test")
+    // public ResponseEntity<?> testAuth() {
+    //     Map<String, Object> result = new HashMap<>();
         
-        try {
-            TokenInfo tokenInfo = oauthClient.getAccessToken();
+    //     try {
+    //         TokenInfo tokenInfo = oauthClient.getAccessToken();
             
-            result.put("success", true);
-            result.put("instance_url", tokenInfo.getInstanceUrl());
-            result.put("token_type", tokenInfo.getTokenType());
-            result.put("expires_in", tokenInfo.getExpiresIn());
-            result.put("issued_at", tokenInfo.getIssuedAt());
+    //         result.put("success", true);
+    //         result.put("instance_url", tokenInfo.getInstanceUrl());
+    //         result.put("token_type", tokenInfo.getTokenType());
+    //         result.put("expires_in", tokenInfo.getExpiresIn());
+    //         result.put("issued_at", tokenInfo.getIssuedAt());
             
-        } catch (Exception e) {
-            result.put("success", false);
-            result.put("error", e.getMessage());
-            result.put("error_type", e.getClass().getSimpleName());
-        }
+    //     } catch (Exception e) {
+    //         result.put("success", false);
+    //         result.put("error", e.getMessage());
+    //         result.put("error_type", e.getClass().getSimpleName());
+    //     }
         
-        return ResponseEntity.ok(result);
-    }
+    //     return ResponseEntity.ok(result);
+    // }
     
     @GetMapping("/account/{id}")
     public ResponseEntity<?> getAccount(@PathVariable String id) {
@@ -153,3 +153,4 @@ public class ApiController {
         return ResponseEntity.ok(status);
     }
 }
+
