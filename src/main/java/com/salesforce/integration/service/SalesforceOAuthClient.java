@@ -24,12 +24,6 @@ public class SalesforceOAuthClient {
     @Value("${salesforce.oauth.client-secret:}")
     private String clientSecret;
     
-    @Value("${salesforce.oauth.username:}")
-    private String username;
-    
-    @Value("${salesforce.oauth.password:}")
-    private String password;
-    
     @Value("${salesforce.oauth.token-url:}")
     private String tokenUrl;
     
@@ -42,108 +36,76 @@ public class SalesforceOAuthClient {
         this.objectMapper = new ObjectMapper();
     }
     
+    /**
+     * 获取访问令牌（客户端凭证流）
+     */
     public TokenInfo getAccessToken() throws Exception {
-    // 检查缓存
-    String cacheKey = "default";
-    TokenInfo cached = tokenCache.get(cacheKey);
-    if (cached != null && !cached.isExpired()) {
-        logger.debug("Using cached access token");
-        return cached;
-    }
-    
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-    
-    MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-    
-    // 使用用户名密码模式，但不指定 scope
-    body.add("grant_type", "password");
-    body.add("client_id", clientId);
-    body.add("client_secret", clientSecret);
-    body.add("username", username);
-    body.add("password", password);
-    
-    // ⚠️ 重要：不要添加 scope 参数，因为您的实例不支持
-    
-    HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
-    
-    try {
-        logger.info("Requesting access token from: {}", tokenUrl);
-        logger.info("Username: {}", username);
+        // 检查缓存
+        String cacheKey = "default";
+        TokenInfo cached = tokenCache.get(cacheKey);
+        if (cached != null && !cached.isExpired()) {
+            logger.debug("Using cached access token");
+            return cached;
+        }
         
-        ResponseEntity<String> response = restTemplate.postForEntity(tokenUrl, request, String.class);
+        // 检查凭证是否配置
+        if (clientId == null || clientId.isEmpty() || 
+            clientSecret == null || clientSecret.isEmpty() ||
+            tokenUrl == null || tokenUrl.isEmpty()) {
+            throw new Exception("Salesforce OAuth credentials not configured. Please check environment variables.");
+        }
         
-        if (response.getStatusCode() == HttpStatus.OK) {
-            JsonNode json = objectMapper.readTree(response.getBody());
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+        
+        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+        body.add("grant_type", "client_credentials");
+        body.add("client_id", clientId);
+        body.add("client_secret", clientSecret);
+        
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
+        
+        try {
+            logger.info("Requesting access token from: {}", tokenUrl);
             
-            TokenInfo tokenInfo = new TokenInfo();
-            tokenInfo.setAccessToken(json.get("access_token").asText());
-            tokenInfo.setInstanceUrl(json.get("instance_url").asText());
-            tokenInfo.setTokenType(json.get("token_type").asText());
-            tokenInfo.setExpiresIn(json.get("expires_in").asInt());
-            tokenInfo.setIssuedAt(System.currentTimeMillis());
+            ResponseEntity<String> response = restTemplate.postForEntity(tokenUrl, request, String.class);
             
-            // 记录响应中实际返回的 scope
-            if (json.has("scope")) {
-                tokenInfo.setScope(json.get("scope").asText());
-                logger.info("Scope returned: {}", json.get("scope").asText());
+            if (response.getStatusCode() == HttpStatus.OK) {
+                JsonNode json = objectMapper.readTree(response.getBody());
+                
+                TokenInfo tokenInfo = new TokenInfo();
+                tokenInfo.setAccessToken(json.get("access_token").asText());
+                tokenInfo.setInstanceUrl(json.get("instance_url").asText());
+                tokenInfo.setTokenType(json.get("token_type").asText());
+                tokenInfo.setExpiresIn(json.get("expires_in").asInt());
+                tokenInfo.setIssuedAt(System.currentTimeMillis());
+                
+                tokenCache.put(cacheKey, tokenInfo);
+                logger.info("Successfully obtained access token, expires in: {} seconds", tokenInfo.getExpiresIn());
+                
+                return tokenInfo;
+            } else {
+                throw new Exception("Failed to get token: " + response.getStatusCode() + " - " + response.getBody());
+            }
+        } catch (Exception e) {
+            logger.error("OAuth token error", e);
+            
+            if (e instanceof org.springframework.web.client.HttpClientErrorException) {
+                org.springframework.web.client.HttpClientErrorException httpEx = 
+                    (org.springframework.web.client.HttpClientErrorException) e;
+                logger.error("HTTP Status: {}", httpEx.getStatusCode());
+                logger.error("Response Body: {}", httpEx.getResponseBodyAsString());
             }
             
-            tokenCache.put(cacheKey, tokenInfo);
-            logger.info("Successfully obtained access token, expires in: {} seconds", tokenInfo.getExpiresIn());
-            
-            return tokenInfo;
-        } else {
-            throw new Exception("Failed to get token: " + response.getStatusCode());
-        }
-    } catch (Exception e) {
-        logger.error("OAuth token error", e);
-        
-        if (e instanceof org.springframework.web.client.HttpClientErrorException) {
-            org.springframework.web.client.HttpClientErrorException httpEx = 
-                (org.springframework.web.client.HttpClientErrorException) e;
-            logger.error("HTTP Status: {}", httpEx.getStatusCode());
-            logger.error("Response Body: {}", httpEx.getResponseBodyAsString());
-        }
-        
-        throw e;
-    }
-}
-    
-    private void validateToken(TokenInfo token) {
-        try {
-            RestTemplate restTemplate = new RestTemplate();
-            String url = token.getInstanceUrl() + "/services/data/v57.0/sobjects/";
-            
-            HttpHeaders headers = new HttpHeaders();
-            headers.setBearerAuth(token.getAccessToken());
-            
-            HttpEntity<String> request = new HttpEntity<>(headers);
-            
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, request, String.class);
-            
-            logger.info("Token validation successful, status: {}", response.getStatusCode());
-            
-        } catch (Exception e) {
-            logger.warn("Token validation failed, but token might still work: {}", e.getMessage());
-            // 不抛出异常，因为有些Org可能不允许这个端点
+            throw e;
         }
     }
     
+    /**
+     * 清除令牌缓存
+     */
     public void clearTokenCache() {
         tokenCache.clear();
         logger.info("Token cache cleared");
     }
-    
-    private TokenInfo getMockToken() {
-        TokenInfo mockToken = new TokenInfo();
-        mockToken.setAccessToken("mock-access-token");
-        mockToken.setInstanceUrl("https://bigdipper-pluto-4490.scratch.my.salesforce.com");
-        mockToken.setTokenType("Bearer");
-        mockToken.setExpiresIn(3600);
-        mockToken.setIssuedAt(System.currentTimeMillis());
-        return mockToken;
-    }
 }
-
-
