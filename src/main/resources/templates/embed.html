@@ -300,27 +300,6 @@ function fetchRecord() {
             apiEndpoint = '/api/account/';
             objectType = 'Account';
             break;
-        case '0Q0': // Estimate (假设的prefix，请根据实际情况修改)
-        case '0QE': // 另一个可能的Estimate前缀
-            apiEndpoint = '/api/estimate/';
-            objectType = 'Estimate';
-            break;
-        case '003': // Contact
-            apiEndpoint = '/api/contact/';
-            objectType = 'Contact';
-            break;
-        case '006': // Opportunity
-            apiEndpoint = '/api/opportunity/';
-            objectType = 'Opportunity';
-            break;
-        case '500': // Case
-            apiEndpoint = '/api/case/';
-            objectType = 'Case';
-            break;
-        case '00Q': // Lead
-            apiEndpoint = '/api/lead/';
-            objectType = 'Lead';
-            break;
         case 'a6W': // ffscpq_Estimate__c
             apiEndpoint = '/api/estimate/';
             objectType = 'ffscpq_Estimate__c';
@@ -362,7 +341,7 @@ function fetchRecord() {
             log(`❌ API Error (${objectType}): ` + err.message, 'ERROR');
             document.getElementById('apiStatus').textContent = '❌';
             document.getElementById('accountData').textContent = 
-                `Error fetching ${objectType} data: ${err.message}\n\nPlease check:\n1. API endpoint exists (/api/${objectType.toLowerCase()}/)\n2. Network connection\n3. Console errors`;
+                `Error fetching ${objectType} data: ${err.message}\n\nPlease check:\n1. API endpoint exists (/api/${apiEndpoint.toLowerCase()}/)\n2. Network connection\n3. Console errors`;
         });
 }
         
@@ -495,6 +474,7 @@ function fetchRecord() {
     </script>
 </body>
 </html>
+
 
 
 
