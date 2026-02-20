@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.header.writers.frameoptions.XFrameOptionsHeaderWriter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -21,16 +22,13 @@ public class SecurityConfig {
             .cors().and()
             .csrf().disable()
             .authorizeRequests()
-                .antMatchers("/embed", "/api/**", "/health").permitAll()
+                .antMatchers("/embed", "/api/**", "/health", "/test.html").permitAll()
                 .anyRequest().authenticated()
             .and()
             .headers()
-                .frameOptions().sameOrigin()
-                .addHeaderWriter((request, response) -> {
-                    response.setHeader("Access-Control-Allow-Origin", 
-                        "https://bigdipper-pluto-4490.scratch.lightning.force.com");
-                    response.setHeader("Access-Control-Allow-Credentials", "true");
-                });
+                .addHeaderWriter(new XFrameOptionsHeaderWriter(
+                    XFrameOptionsHeaderWriter.XFrameOptionsMode.SAMEORIGIN))
+                .frameOptions().disable();  // 关键：禁用X-Frame-Options
         
         return http.build();
     }
