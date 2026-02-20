@@ -111,92 +111,92 @@
     <div class="container">
         <h1>Salesforce Java Integration <span class="badge">v1.0</span></h1>
         
-        <!-- 状态栏 -->
+        <!-- Status Bar -->
         <div class="status-bar" id="statusBar">
-            <strong>📡 连接状态:</strong> 
-            <span id="connectionStatus">检查中...</span>
-            <span style="float: right;" id="messageCount">消息: 0</span>
+            <strong>📡 Connection Status:</strong> 
+            <span id="connectionStatus">Connecting...</span>
+            <span style="float: right;" id="messageCount">Messages: 0</span>
         </div>
         
-        <!-- Account信息卡片 -->
+        <!-- Account Information Card -->
         <div class="card">
             <h3>📋 Account Information</h3>
             <p>Account ID: <span id="accountId" th:text="${recordId}"></span></p>
             <div class="stats">
                 <div class="stat-item">
-                    <div>API状态</div>
+                    <div>API Status</div>
                     <div id="apiStatus">❓</div>
                 </div>
                 <div class="stat-item">
-                    <div>iframe状态</div>
+                    <div>Iframe Status</div>
                     <div id="iframeStatus">❓</div>
                 </div>
                 <div class="stat-item">
-                    <div>父窗口</div>
+                    <div>Parent Window</div>
                     <div id="parentStatus">❓</div>
                 </div>
             </div>
-            <button onclick="fetchAccount()" id="fetchBtn">🔍 获取Account数据</button>
-            <button onclick="testAPI()" class="secondary">🔧 测试API连接</button>
-            <button onclick="testParentConnection()" class="secondary">📡 测试父窗口连接</button>
-            <pre id="accountData" style="background: #f8f9fa; padding: 15px; margin-top: 15px; border-radius: 4px;">点击按钮加载数据...</pre>
+            <button onclick="fetchAccount()" id="fetchBtn">🔍 Get Account Data</button>
+            <button onclick="testAPI()" class="secondary">🔧 Test API Connection</button>
+            <button onclick="testParentConnection()" class="secondary">📡 Test Parent Window Connection</button>
+            <pre id="accountData" style="background: #f8f9fa; padding: 15px; margin-top: 15px; border-radius: 4px;">Click button to load data...</pre>
         </div>
         
-        <!-- 通信日志卡片 -->
+        <!-- Communication Log Card -->
         <div class="card">
-            <h3>📨 通信日志</h3>
-            <button onclick="clearLog()" class="secondary">🗑️ 清空日志</button>
+            <h3>📨 Communication Log</h3>
+            <button onclick="clearLog()" class="secondary">🗑️ Clear Log</button>
             <div id="messageLog" class="log">
-                <div class="log-entry">>>> 日志系统启动...</div>
+                <div class="log-entry">>>> Log System Started...</div>
             </div>
         </div>
         
-        <!-- 发送消息卡片 -->
+        <!-- Send Message Card -->
         <div class="card">
-            <h3>📤 发送消息到 Salesforce</h3>
-            <input type="text" id="messageInput" placeholder="输入要发送的消息...">
-            <button onclick="sendMessage()">📨 发送消息</button>
-            <button onclick="sendReady()" class="secondary">🔄 发送Ready信号</button>
+            <h3>📤 Send Message to Salesforce</h3>
+            <input type="text" id="messageInput" placeholder="Enter message to send...">
+            <button onclick="sendMessage()">📨 Send Message</button>
+            <button onclick="sendReady()" class="secondary">🔄 Send Ready Signal</button>
         </div>
         
-        <!-- 调试信息卡片 -->
+        <!-- Debug Info Card -->
         <div class="card">
-            <h3>🔧 调试信息</h3>
+            <h3>🔧 Debug Information</h3>
             <div style="font-family: monospace; font-size: 12px;">
-                <p><strong>当前URL:</strong> <span id="currentUrl"></span></p>
-                <p><strong>是否在iframe中:</strong> <span id="isIframe"></span></p>
-                <p><strong>父窗口来源:</strong> <span id="parentOrigin"></span></p>
-                <p><strong>可信域名列表:</strong></p>
+                <p><strong>Current URL:</strong> <span id="currentUrl"></span></p>
+                <p><strong>Inside Iframe:</strong> <span id="isIframe"></span></p>
+                <p><strong>Parent Origin:</strong> <span id="parentOrigin"></span></p>
+                <p><strong>Trusted Origins List:</strong></p>
                 <ul id="trustedList"></ul>
             </div>
         </div>
     </div>
 
     <script>
-        // ========== 配置信息 ==========
+        // ========== Configuration ==========
         const config = {
             recordId: document.getElementById('accountId').textContent,
             trustedOrigins: [
                 'https://bigdipper-pluto-4490.scratch.lightning.force.com',
                 'https://bigdipper-pluto-4490.scratch.my.salesforce.com',
                 'https://withoutcanvas-production.up.railway.app',
-                window.location.origin  // 允许自身
+                window.location.origin  // Allow self
             ],
             debug: true
         };
         
-        // 状态变量
+        // State variables
         let messageCounter = 0;
         let lastMessageTime = null;
         
-        // ========== 初始化 ==========
+        // ========== Initialization ==========
         document.addEventListener('DOMContentLoaded', function() {
-            // 显示调试信息
+            // Display debug info
             document.getElementById('currentUrl').textContent = window.location.href;
-            document.getElementById('isIframe').textContent = (window.parent !== window) ? '是 ✅' : '否 ❌';
-            document.getElementById('parentOrigin').textContent = document.referrer || '无';
+            document.getElementById('isIframe').textContent = (window.parent !== window) ? 'Yes ✅' : 'No ❌';
+            document.getElementById('parentOrigin').textContent = document.referrer || 'None';
             
-            // 显示可信域名
+            // Display trusted origins
             const trustedList = document.getElementById('trustedList');
             config.trustedOrigins.forEach(origin => {
                 const li = document.createElement('li');
@@ -204,82 +204,82 @@
                 trustedList.appendChild(li);
             });
             
-            // 更新状态
+            // Update status
             updateConnectionStatus();
             
-            // 添加消息监听
+            // Add message listener
             window.addEventListener('message', handleMessage);
             
-            // 发送就绪信号
+            // Send ready signal
             setTimeout(() => {
                 sendReady();
                 testAPI();
                 testParentConnection();
             }, 1000);
             
-            log('系统初始化完成', 'SYSTEM');
+            log('System initialized', 'SYSTEM');
         });
         
-        // ========== 消息处理 ==========
+        // ========== Message Handler ==========
         function handleMessage(event) {
             messageCounter++;
             lastMessageTime = new Date();
-            document.getElementById('messageCount').textContent = `消息: ${messageCounter}`;
+            document.getElementById('messageCount').textContent = `Messages: ${messageCounter}`;
             
-            // 安全验证 - 检查来源
+            // Security validation - check origin
             if (!config.trustedOrigins.includes(event.origin)) {
-                log(`⚠️ 阻止来自未授权域名的消息: ${event.origin}`, 'SECURITY');
+                log(`⚠️ Blocked message from untrusted origin: ${event.origin}`, 'SECURITY');
                 console.warn('Untrusted origin:', event.origin);
                 return;
             }
             
-            log(`📩 收到来自 [${event.origin}] 的消息: ${JSON.stringify(event.data)}`, 'RECEIVE');
+            log(`📩 Received from [${event.origin}]: ${JSON.stringify(event.data)}`, 'RECEIVE');
             
-            // 处理不同类型的消息
+            // Handle different message types
             const data = event.data;
             
             if (data.type === 'fromSalesforce') {
-                alert('📢 来自 Salesforce: ' + data.content);
-                log(`💬 Salesforce消息: ${data.content}`, 'INFO');
+                alert('📢 Message from Salesforce: ' + data.content);
+                log(`💬 Salesforce message: ${data.content}`, 'INFO');
             }
             
             if (data.type === 'ping') {
-                // 响应ping
+                // Respond to ping
                 event.source.postMessage({
                     type: 'pong',
                     timestamp: Date.now()
                 }, event.origin);
-                log('🏓 已响应ping请求', 'INFO');
+                log('🏓 Responded to ping request', 'INFO');
             }
             
             if (data.type === 'ack') {
-                log('✅ 收到确认响应', 'SUCCESS');
+                log('✅ Received acknowledgment', 'SUCCESS');
             }
             
-            // 更新状态
+            // Update status
             updateConnectionStatus();
         }
         
-        // ========== 发送消息到父窗口 ==========
+        // ========== Send Message to Parent Window ==========
         function sendToParent(message, targetOrigin = config.trustedOrigins[0]) {
             if (window.parent === window) {
-                log('❌ 不在iframe中，无法发送消息到父窗口', 'ERROR');
+                log('❌ Not in iframe, cannot send message to parent window', 'ERROR');
                 return false;
             }
             
             try {
                 window.parent.postMessage(message, targetOrigin);
-                log(`📤 发送到 [${targetOrigin}]: ${JSON.stringify(message)}`, 'SEND');
+                log(`📤 Sent to [${targetOrigin}]: ${JSON.stringify(message)}`, 'SEND');
                 return true;
             } catch (err) {
-                log(`❌ 发送失败: ${err.message}`, 'ERROR');
+                log(`❌ Send failed: ${err.message}`, 'ERROR');
                 return false;
             }
         }
         
-        // ========== API 调用 ==========
+        // ========== API Calls ==========
         function fetchAccount() {
-            log('🔄 正在获取Account数据...', 'API');
+            log('🔄 Fetching account data...', 'API');
             
             fetch('/api/account/' + config.recordId)
                 .then(res => {
@@ -289,10 +289,10 @@
                 .then(data => {
                     document.getElementById('accountData').textContent = 
                         JSON.stringify(data, null, 2);
-                    log('✅ Account数据获取成功', 'SUCCESS');
+                    log('✅ Account data retrieved successfully', 'SUCCESS');
                     document.getElementById('apiStatus').textContent = '✅';
                     
-                    // 发送到Salesforce
+                    // Send to Salesforce
                     sendToParent({
                         type: 'accountData',
                         data: data,
@@ -300,15 +300,15 @@
                     });
                 })
                 .catch(err => {
-                    log('❌ API错误: ' + err.message, 'ERROR');
+                    log('❌ API Error: ' + err.message, 'ERROR');
                     document.getElementById('apiStatus').textContent = '❌';
                     document.getElementById('accountData').textContent = 
-                        '错误: ' + err.message + '\n\n请检查:\n1. API端点是否存在\n2. 网络连接\n3. 控制台错误';
+                        'Error: ' + err.message + '\n\nPlease check:\n1. API endpoint exists\n2. Network connection\n3. Console errors';
                 });
         }
         
         function testAPI() {
-            log('🔧 测试API连接...', 'API');
+            log('🔧 Testing API connection...', 'API');
             
             fetch('/api/test')
                 .then(res => {
@@ -316,41 +316,41 @@
                     return res.json();
                 })
                 .then(data => {
-                    log('✅ API连接成功: ' + JSON.stringify(data), 'SUCCESS');
+                    log('✅ API connection successful: ' + JSON.stringify(data), 'SUCCESS');
                     document.getElementById('apiStatus').textContent = '✅';
                 })
                 .catch(err => {
-                    log('❌ API连接失败: ' + err.message, 'ERROR');
+                    log('❌ API connection failed: ' + err.message, 'ERROR');
                     document.getElementById('apiStatus').textContent = '❌';
                 });
         }
         
         function testParentConnection() {
-            log('🔧 测试父窗口连接...', 'TEST');
+            log('🔧 Testing parent window connection...', 'TEST');
             
             if (window.parent === window) {
-                log('❌ 不在iframe中，无法测试父窗口', 'ERROR');
+                log('❌ Not in iframe, cannot test parent window', 'ERROR');
                 document.getElementById('iframeStatus').textContent = '❌';
                 document.getElementById('parentStatus').textContent = '❌';
                 return;
             }
             
             document.getElementById('iframeStatus').textContent = '✅';
-            document.getElementById('parentStatus').textContent = '✅ (来源: ' + document.referrer + ')';
+            document.getElementById('parentStatus').textContent = '✅ (Source: ' + document.referrer + ')';
             
-            // 发送ping测试
+            // Send ping test
             sendToParent({
                 type: 'ping',
                 from: 'java-app',
                 timestamp: Date.now()
             });
             
-            // 等待pong响应
+            // Wait for pong response
             setTimeout(() => {
                 if (lastMessageTime && (Date.now() - lastMessageTime) < 3000) {
-                    log('✅ 父窗口通信正常', 'SUCCESS');
+                    log('✅ Parent window communication normal', 'SUCCESS');
                 } else {
-                    log('⚠️ 未收到父窗口响应', 'WARN');
+                    log('⚠️ No response from parent window', 'WARN');
                 }
             }, 2000);
         }
@@ -360,7 +360,7 @@
             const message = input.value.trim();
             
             if (!message) {
-                alert('请输入消息');
+                alert('Please enter a message');
                 return;
             }
             
@@ -383,13 +383,13 @@
             });
         }
         
-        // ========== 工具函数 ==========
+        // ========== Utility Functions ==========
         function log(message, type = 'INFO') {
             const logEl = document.getElementById('messageLog');
             const entry = document.createElement('div');
             entry.className = 'log-entry';
             
-            const timestamp = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+            const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
             let prefix = '';
             
             switch(type) {
@@ -418,20 +418,20 @@
             const isIframe = window.parent !== window;
             
             if (!isIframe) {
-                statusEl.innerHTML = '❌ 不在iframe中 (请通过Salesforce访问)';
+                statusEl.innerHTML = '❌ Not in iframe (Please access through Salesforce)';
                 statusEl.style.color = '#dc3545';
             } else if (lastMessageTime && (Date.now() - lastMessageTime) < 10000) {
-                statusEl.innerHTML = '✅ 已连接 (最近消息: ' + lastMessageTime.toLocaleTimeString() + ')';
+                statusEl.innerHTML = '✅ Connected (Last message: ' + lastMessageTime.toLocaleTimeString() + ')';
                 statusEl.style.color = '#28a745';
             } else {
-                statusEl.innerHTML = '⚠️ 等待连接...';
+                statusEl.innerHTML = '⚠️ Waiting for connection...';
                 statusEl.style.color = '#ffc107';
             }
         }
         
         function clearLog() {
             document.getElementById('messageLog').innerHTML = 
-                '<div class="log-entry">>>> 日志已清空</div>';
+                '<div class="log-entry">>>> Log cleared</div>';
         }
     </script>
 </body>
