@@ -74,14 +74,45 @@ public class SalesforceOAuthClient {
                 JsonNode json = objectMapper.readTree(response.getBody());
                 
                 TokenInfo tokenInfo = new TokenInfo();
-                tokenInfo.setAccessToken(json.get("access_token").asText());
-                tokenInfo.setInstanceUrl(json.get("instance_url").asText());
-                tokenInfo.setTokenType(json.get("token_type").asText());
-                tokenInfo.setExpiresIn(json.get("expires_in").asInt());
+                
+                // 安全地获取字段，处理可能为 null 的情况
+                if (json.has("access_token")) {
+                    tokenInfo.setAccessToken(json.get("access_token").asText());
+                } else {
+                    throw new Exception("Response missing access_token");
+                }
+                
+                if (json.has("instance_url")) {
+                    tokenInfo.setInstanceUrl(json.get("instance_url").asText());
+                } else {
+                    // 如果没有 instance_url，尝试从 id 字段获取
+                    if (json.has("id")) {
+                        String id = json.get("id").asText();
+                        // 从 id URL 中提取 instance_url
+                        int index = id.indexOf("/id/");
+                        if (index > 0) {
+                            tokenInfo.setInstanceUrl(id.substring(0, index));
+                        }
+                    }
+                }
+                
+                if (json.has("token_type")) {
+                    tokenInfo.setTokenType(json.get("token_type").asText());
+                } else {
+                    tokenInfo.setTokenType("Bearer");
+                }
+                
+                // expires_in 可能不存在于客户端凭证流的响应中
+                if (json.has("expires_in")) {
+                    tokenInfo.setExpiresIn(json.get("expires_in").asInt());
+                } else {
+                    tokenInfo.setExpiresIn(3600); // 默认1小时
+                }
+                
                 tokenInfo.setIssuedAt(System.currentTimeMillis());
                 
                 tokenCache.put(cacheKey, tokenInfo);
-                logger.info("Successfully obtained access token, expires in: {} seconds", tokenInfo.getExpiresIn());
+                logger.info("Successfully obtained access token for instance: {}", tokenInfo.getInstanceUrl());
                 
                 return tokenInfo;
             } else {
