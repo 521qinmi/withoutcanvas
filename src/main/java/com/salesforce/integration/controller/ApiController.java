@@ -13,72 +13,98 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = {
-    "https://bigdipper-pluto-4490.scratch.lightning.force.com",
-    "https://bigdipper-pluto-4490.scratch.my.salesforce.com"
-})
 public class ApiController {
     private static final Logger logger = LoggerFactory.getLogger(ApiController.class);
     
     private final SalesforceApiService salesforceApiService;
     private final SalesforceOAuthClient oauthClient;
     
-    public ApiController(SalesforceApiService salesforceApiService, 
-                        SalesforceOAuthClient oauthClient) {
+    public ApiController(SalesforceApiService salesforceApiService, SalesforceOAuthClient oauthClient) {
         this.salesforceApiService = salesforceApiService;
         this.oauthClient = oauthClient;
+    }
+    
+    @GetMapping("/test")
+    public ResponseEntity<?> test() {
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "success");
+        response.put("message", "Java API is working");
+        response.put("timestamp", System.currentTimeMillis());
+        response.put("server", "railway");
+        return ResponseEntity.ok(response);
     }
     
     @GetMapping("/account/{id}")
     public ResponseEntity<?> getAccount(@PathVariable String id) {
         try {
-            logger.info("Get Account Info: {}", id);
-            JsonNode account = salesforceApiService.getAccountById(id);
+            logger.info("Getting account from Salesforce: {}", id);
+            Map<String, Object> account = salesforceApiService.getAccountById(id);
             return ResponseEntity.ok(account);
         } catch (Exception e) {
-            logger.error("Get Account Failure", e);
-            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+            logger.error("Error getting account: {}", e.getMessage(), e);
+            
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            error.put("accountId", id);
+            error.put("status", "failed");
+            return ResponseEntity.status(500).body(error);
         }
     }
     
     @PostMapping("/task")
-    public ResponseEntity<?> createTask(@RequestBody Map<String, Object> taskData) {
+    public ResponseEntity<?> createTask(@RequestBody Map<String, String> taskData) {
         try {
-            logger.info("Create Task: {}", taskData);
+            String whatId = taskData.get("whatId");
+            String subject = taskData.get("subject");
+            String status = taskData.get("status");
+            
+            if (whatId == null || subject == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "whatId and subject are required"));
+            }
             
             String jsonBody = String.format(
-                "{\"Subject\":\"%s\", \"WhatId\":\"%s\", \"Status\":\"%s\"}",
-                taskData.get("subject"),
-                taskData.get("whatId"),
-                taskData.get("status")
+                "{\"WhatId\":\"%s\", \"Subject\":\"%s\", \"Status\":\"%s\"}",
+                whatId, subject, status != null ? status : "Not Started"
             );
             
             JsonNode result = salesforceApiService.createRecord("Task", jsonBody);
-            return ResponseEntity.ok(result);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("id", result.get("id").asText());
+            response.put("success", true);
+            response.put("whatId", whatId);
+            response.put("subject", subject);
+            
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            logger.error("Create Task Failure", e);
+            logger.error("Error creating task", e);
             return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
         }
     }
     
     @PatchMapping("/account/{id}")
-    public ResponseEntity<?> updateAccount(@PathVariable String id, 
-                                          @RequestBody Map<String, Object> updateData) {
+    public ResponseEntity<?> updateAccount(@PathVariable String id, @RequestBody Map<String, Object> updates) {
         try {
-            logger.info("Update Account: {}, data: {}", id, updateData);
+            logger.info("Updating account {} with: {}", id, updates);
             
             // 构建更新字段
             StringBuilder fields = new StringBuilder("{");
-            for (Map.Entry<String, Object> entry : updateData.entrySet()) {
+            for (Map.Entry<String, Object> entry : updates.entrySet()) {
                 if (fields.length() > 1) fields.append(",");
                 fields.append(String.format("\"%s\":\"%s\"", entry.getKey(), entry.getValue()));
             }
             fields.append("}");
             
             JsonNode result = salesforceApiService.updateRecord("Account", id, fields.toString());
-            return ResponseEntity.ok(Map.of("success", true, "id", id));
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("id", id);
+            response.put("updated", updates.keySet());
+            
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            logger.error("Update Account Failure", e);
+            logger.error("Error updating account", e);
             return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
         }
     }
@@ -102,10 +128,11 @@ public class ApiController {
         Map<String, Object> status = new HashMap<>();
         status.put("status", "UP");
         status.put("timestamp", System.currentTimeMillis());
+        status.put("service", "salesforce-java-app");
         status.put("version", "1.0.0");
         
         try {
-            // 测试连接
+            // Test connection
             oauthClient.getAccessToken();
             status.put("salesforce", "connected");
         } catch (Exception e) {
@@ -116,4 +143,3 @@ public class ApiController {
         return ResponseEntity.ok(status);
     }
 }
-
