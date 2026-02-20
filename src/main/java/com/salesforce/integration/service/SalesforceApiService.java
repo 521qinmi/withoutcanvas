@@ -43,12 +43,38 @@ public class SalesforceApiService {
     }
     
     /**
-     * 根据ID获取Estimate
-     */
-    public Map<String, Object> getEstimateById(String estimateId) throws Exception {
-        logger.info("Getting estimate info for: {}", estimateId);
-        return getRecordById("ffscpq_Estimate__c", estimateId);
+ * 获取Estimate记录 - 使用正确的字段
+ */
+public Map<String, Object> getEstimateById(String estimateId) throws Exception {
+    logger.info("Getting estimate info for: {}", estimateId);
+    
+    TokenInfo tokenInfo = oauthClient.getAccessToken();
+    
+    // 查询Estimate对象的实际字段
+    // 请根据您的实际字段名修改
+    String soql = "SELECT Id, Name, ffscpq_Amount__c, ffscpq_Status__c, " +
+                  "ffscpq_Date__c, ffscpq_Customer__c, ffscpq_Description__c " +
+                  "FROM ffscpq_Estimate__c WHERE Id = '" + estimateId + "'";
+    
+    JsonNode result = executeQuery(soql);
+    
+    if (result != null && result.has("records") && result.get("records").size() > 0) {
+        JsonNode record = result.get("records").get(0);
+        
+        Map<String, Object> estimate = new HashMap<>();
+        estimate.put("Id", getJsonProperty(record, "Id"));
+        estimate.put("Name", getJsonProperty(record, "Name"));
+        estimate.put("Amount", getJsonProperty(record, "ffscpq_Amount__c"));
+        estimate.put("Status", getJsonProperty(record, "ffscpq_Status__c"));
+        estimate.put("Date", getJsonProperty(record, "ffscpq_Date__c"));
+        estimate.put("Customer", getJsonProperty(record, "ffscpq_Customer__c"));
+        estimate.put("Description", getJsonProperty(record, "ffscpq_Description__c"));
+        
+        return estimate;
+    } else {
+        throw new Exception("Estimate not found: " + estimateId);
     }
+}
     
     /**
  * 通用记录查询 - 适用于任何对象
@@ -109,20 +135,22 @@ public Map<String, Object> getRecordById(String objectType, String recordId) thr
     }
 }
     
-    /**
-     * 执行SOQL查询
-     */
     public JsonNode executeQuery(String soql) throws Exception {
-        TokenInfo tokenInfo = oauthClient.getAccessToken();
-        
-        String encodedSoql = URLEncoder.encode(soql, StandardCharsets.UTF_8.toString());
-        String url = tokenInfo.getInstanceUrl() + "/services/data/" + apiVersion + 
-                    "/query?q=" + encodedSoql;
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(tokenInfo.getAccessToken());
-        
-        HttpEntity<String> request = new HttpEntity<>(headers);
+    TokenInfo tokenInfo = oauthClient.getAccessToken();
+    
+    String encodedSoql = URLEncoder.encode(soql, StandardCharsets.UTF_8.toString());
+    String url = tokenInfo.getInstanceUrl() + "/services/data/" + apiVersion + 
+                "/query?q=" + encodedSoql;
+    
+    logger.info("Executing query: {}", soql);
+    logger.info("Encoded URL: {}", url);
+    
+    HttpHeaders headers = new HttpHeaders();
+    headers.setBearerAuth(tokenInfo.getAccessToken());
+    
+    HttpEntity<String> request = new HttpEntity<>(headers);
+    
+    try {
         ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, request, String.class);
         
         if (response.getStatusCode().is2xxSuccessful()) {
@@ -130,7 +158,11 @@ public Map<String, Object> getRecordById(String objectType, String recordId) thr
         } else {
             throw new Exception("Query failed: " + response.getStatusCode() + " - " + response.getBody());
         }
+    } catch (Exception e) {
+        logger.error("Query execution failed", e);
+        throw e;
     }
+}
     
     /**
      * 创建记录
@@ -192,5 +224,6 @@ public Map<String, Object> getRecordById(String objectType, String recordId) thr
         return null;
     }
 }
+
 
 
