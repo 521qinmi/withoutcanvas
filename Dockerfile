@@ -10,8 +10,8 @@ COPY src ./src
 RUN mvn clean package -DskipTests
 
 # ---- 第二阶段：运行 ----
-# 使用一个轻量级的JDK镜像作为运行环境
-FROM openjdk:17-jdk-slim
+# 使用Eclipse Temurin的JDK 17镜像（官方推荐的OpenJDK构建）
+FROM eclipse-temurin:17-jdk-jammy
 # 设置容器内的工作目录
 WORKDIR /app
 # 从构建阶段的容器中，将生成的jar文件复制到当前运行阶段的容器中，并重命名为app.jar
