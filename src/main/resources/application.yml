@@ -17,6 +17,8 @@ cors:
   allowed-origins:
     - https://bigdipper-pluto-4490.scratch.lightning.force.com/
     - https://bigdipper-pluto-4490.scratch.my.salesforce.com
+    - https://ibm112-dev-ed.develop.lightning.force.com/
+    - https://ibm112-dev-ed.develop.my.salesforce.com
 
 logging:
   level:
