@@ -40,6 +40,7 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(Arrays.asList(
             "https://bigdipper-pluto-4490.scratch.lightning.force.com",
             "https://bigdipper-pluto-4490.scratch.my.salesforce.com",
+            "https://ibm112-dev-ed.develop.lightning.force.com",
             "https://withoutcanvas-production.up.railway.app"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
