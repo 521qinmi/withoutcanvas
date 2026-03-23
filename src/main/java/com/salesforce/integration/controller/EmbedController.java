@@ -229,39 +229,37 @@ public class EmbedController {
     @PostMapping("/form/save")
     @ResponseBody
     public ResponseEntity<?> saveFormData(@RequestBody Map<String, Object> formData) {
+        logger.info("Received form data for saving: {}", formData);
+        
         try {
+            if (formData == null) {
+                logger.error("Form data is null");
+                return ResponseEntity.badRequest().body("{\"success\": false, \"error\": \"Form data is required\"}");
+            }
+            
             String recordId = (String) formData.get("sfRecordId");
+            logger.info("Extracted recordId: {}", recordId);
             
             if (recordId == null || recordId.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "error", "Record ID is required"
-                ));
+                logger.error("Record ID is missing");
+                return ResponseEntity.badRequest().body("{\"success\": false, \"error\": \"Record ID is required\"}");
             }
             
             // 保存到文件
             boolean saved = fileStorageService.saveAccountData(recordId, formData);
+            logger.info("Save result: {}", saved);
             
             if (saved) {
                 logger.info("Successfully saved form data for recordId: {}", recordId);
-                return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "message", "Data saved successfully",
-                    "recordId", recordId
-                ));
+                return ResponseEntity.ok("{\"success\": true, \"message\": \"Data saved successfully\", \"recordId\": \"" + recordId + "\"}");
             } else {
-                return ResponseEntity.status(500).body(Map.of(
-                    "success", false,
-                    "error", "Failed to save data"
-                ));
+                logger.error("Failed to save data for recordId: {}", recordId);
+                return ResponseEntity.status(500).body("{\"success\": false, \"error\": \"Failed to save data\"}");
             }
             
         } catch (Exception e) {
             logger.error("Error saving form data", e);
-            return ResponseEntity.status(500).body(Map.of(
-                "success", false,
-                "error", e.getMessage()
-            ));
+            return ResponseEntity.status(500).body("{\"success\": false, \"error\": \"" + e.getMessage() + "\"}");
         }
     }
     
@@ -282,6 +280,22 @@ public class EmbedController {
                 "error", e.getMessage()
             ));
         }
+    }
+    
+    /**
+     * 测试保存端点 - 用于调试
+     */
+    @PostMapping("/form/test-save")
+    @ResponseBody
+    public String testSave(@RequestBody(required = false) Map<String, Object> formData) {
+        logger.info("Test save endpoint called");
+        logger.info("Received data: {}", formData);
+        
+        if (formData == null) {
+            return "{\"status\": \"error\", \"message\": \"No data received\"}";
+        }
+        
+        return "{\"status\": \"success\", \"message\": \"Data received\", \"receivedKeys\": " + formData.keySet().size() + "}";
     }
     
     @GetMapping("/")
