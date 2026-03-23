@@ -130,6 +130,17 @@
     </div>
     
     <script>
+        // ========== Configuration ==========
+        const config = {
+            recordId: document.getElementById('accountId').textContent,
+            trustedOrigins: [
+                'https://ibm112-dev-ed.develop.lightning.force.com',
+                'https://ibm112-dev-ed.develop.my.salesforce.com',
+                'https://withoutcanvas-production.up.railway.app',
+                window.location.origin  // Allow self
+            ],
+            debug: true
+        };
         // Get form mode
         const mode = /*[[${mode}]]*/ 'create';
         const recordId = /*[[${recordId}]]*/ null;
