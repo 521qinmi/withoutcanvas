@@ -32,7 +32,25 @@ public class EmbedController {
         
         return "embed";
     }
-    
+    @GetMapping("/form")
+    public String formPage(# Set default view
+            @RequestParam(defaultValue = "001xx000003DGb2AAG") String recordId,
+            Model model,
+            HttpServletResponse response) {
+        
+        logger.info("Embed page request - recordId: {}", recordId);
+        
+        // 确保 headers 正确设置
+        response.setHeader("X-Frame-Options", "ALLOWALL");
+        response.setHeader("Content-Security-Policy", "frame-ancestors *");
+        
+        model.addAttribute("recordId", recordId);
+        model.addAttribute("appName", "Account Info");
+        model.addAttribute("version", "1.0.0");
+        model.addAttribute("timestamp", System.currentTimeMillis());
+        
+        return "form";
+    }
     @GetMapping("/")
     public String home(HttpServletResponse response) {
         response.setHeader("X-Frame-Options", "ALLOWALL");
