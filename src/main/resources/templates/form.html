@@ -265,14 +265,14 @@
                         <div class="form-group">
                             <label>Account Name *</label>
                             <input type="text" name="accountName" id="accountName" required 
-                                   th:value="${formData.accountName}" 
+                                   th:value="${formData.accountName != null ? formData.accountName : ''}" 
                                    placeholder="Enter account name">
                             <span class="sf-info">From Salesforce</span>
                         </div>
                         <div class="form-group">
                             <label>Account Number</label>
                             <input type="text" name="accountNumber" id="accountNumber" 
-                                   th:value="${formData.accountNumber}"
+                                   th:value="${formData.accountNumber != null ? formData.accountNumber : ''}"
                                    placeholder="Auto-generated or manual entry">
                         </div>
                     </div>
@@ -281,13 +281,13 @@
                         <div class="form-group">
                             <label>Phone</label>
                             <input type="tel" name="phone" id="phone" 
-                                   th:value="${formData.phone}"
+                                   th:value="${formData.phone != null ? formData.phone : ''}"
                                    placeholder="(555) 123-4567">
                         </div>
                         <div class="form-group">
                             <label>Website</label>
                             <input type="url" name="website" id="website" 
-                                   th:value="${formData.website}"
+                                   th:value="${formData.website != null ? formData.website : ''}"
                                    placeholder="https://example.com">
                         </div>
                     </div>
@@ -295,7 +295,7 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Industry</label>
-                            <select name="industry" id="industry" th:value="${formData.industry}">
+                            <select name="industry" id="industry" th:value="${formData.industry != null ? formData.industry : ''}">
                                 <option value="">Select Industry</option>
                                 <option value="Agriculture">Agriculture</option>
                                 <option value="Construction">Construction</option>
@@ -320,7 +320,7 @@
                         <div class="form-group">
                             <label>Annual Revenue (USD)</label>
                             <input type="number" name="annualRevenue" id="annualRevenue" 
-                                   th:value="${formData.annualRevenue}"
+                                   th:value="${formData.annualRevenue != null ? formData.annualRevenue : ''}"
                                    placeholder="0.00">
                         </div>
                     </div>
@@ -329,7 +329,7 @@
                         <div class="form-group">
                             <label>Number of Employees</label>
                             <input type="number" name="numberOfEmployees" id="numberOfEmployees" 
-                                   th:value="${formData.numberOfEmployees}"
+                                   th:value="${formData.numberOfEmployees != null ? formData.numberOfEmployees : ''}"
                                    placeholder="0">
                         </div>
                         <div class="form-group">
@@ -351,7 +351,7 @@
                         <div class="form-group">
                             <label>Billing Street</label>
                             <input type="text" name="billingStreet" id="billingStreet" 
-                                   th:value="${formData.billingStreet}"
+                                   th:value="${formData.billingStreet != null ? formData.billingStreet : ''}"
                                    placeholder="Street address">
                         </div>
                     </div>
@@ -360,13 +360,13 @@
                         <div class="form-group">
                             <label>Billing City</label>
                             <input type="text" name="billingCity" id="billingCity" 
-                                   th:value="${formData.billingCity}"
+                                   th:value="${formData.billingCity != null ? formData.billingCity : ''}"
                                    placeholder="City">
                         </div>
                         <div class="form-group">
                             <label>Billing State/Province</label>
                             <input type="text" name="billingState" id="billingState" 
-                                   th:value="${formData.billingState}"
+                                   th:value="${formData.billingState != null ? formData.billingState : ''}"
                                    placeholder="State/Province">
                         </div>
                     </div>
@@ -375,13 +375,13 @@
                         <div class="form-group">
                             <label>Billing Postal Code</label>
                             <input type="text" name="billingPostalCode" id="billingPostalCode" 
-                                   th:value="${formData.billingPostalCode}"
+                                   th:value="${formData.billingPostalCode != null ? formData.billingPostalCode : ''}"
                                    placeholder="Postal code">
                         </div>
                         <div class="form-group">
                             <label>Billing Country</label>
                             <input type="text" name="billingCountry" id="billingCountry" 
-                                   th:value="${formData.billingCountry}"
+                                   th:value="${formData.billingCountry != null ? formData.billingCountry : ''}"
                                    placeholder="Country">
                         </div>
                     </div>
@@ -392,7 +392,7 @@
                     <div class="form-group">
                         <label>Description</label>
                         <textarea name="description" id="description" rows="4" 
-                                  th:text="${formData.description}"
+                                  th:text="${formData.description != null ? formData.description : ''}"
                                   placeholder="Enter additional details about this account..."></textarea>
                     </div>
                     
