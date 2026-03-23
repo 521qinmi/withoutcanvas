@@ -127,49 +127,100 @@ public class EmbedController {
      * 从 Salesforce 加载 Account 数据
      */
     private Map<String, Object> loadAccountFromSalesforce(String recordId) throws Exception {
+        // 初始化所有字段为默认空值
         Map<String, Object> formData = new HashMap<>();
+        formData.put("accountName", "");
+        formData.put("accountNumber", "");
+        formData.put("phone", "");
+        formData.put("address", "");
+        formData.put("industry", "");
+        formData.put("annualRevenue", "");
+        formData.put("numberOfEmployees", "");
+        formData.put("description", "");
+        formData.put("website", "");
+        formData.put("billingStreet", "");
+        formData.put("billingCity", "");
+        formData.put("billingState", "");
+        formData.put("billingPostalCode", "");
+        formData.put("billingCountry", "");
         
         try {
             // 直接从 SalesforceApiService 获取 Account 数据（返回 Map）
             Map<String, Object> account = salesforceApiService.getAccountById(recordId);
             
-            // 提取字段值
-            if (account.containsKey("Name")) {
-                formData.put("accountName", account.get("Name"));
-            }
-            if (account.containsKey("AccountNumber")) {
-                formData.put("accountNumber", account.get("AccountNumber"));
-            }
-            if (account.containsKey("Phone")) {
-                formData.put("phone", account.get("Phone"));
-            }
-            if (account.containsKey("BillingStreet")) {
-                formData.put("address", account.get("BillingStreet"));
-            }
-            if (account.containsKey("Industry")) {
-                formData.put("industry", account.get("Industry"));
-            }
-            if (account.containsKey("AnnualRevenue")) {
-                formData.put("annualRevenue", account.get("AnnualRevenue").toString());
-            }
-            if (account.containsKey("NumberOfEmployees")) {
-                formData.put("numberOfEmployees", account.get("NumberOfEmployees"));
-            }
-            if (account.containsKey("Description")) {
-                formData.put("description", account.get("Description"));
-            }
-            if (account.containsKey("Website")) {
-                formData.put("website", account.get("Website"));
+            // 提取字段值（安全地获取，避免 null）
+            if (account != null) {
+                putIfPresent(formData, account, "accountName");
+                putIfPresent(formData, account, "accountNumber");
+                putIfPresent(formData, account, "phone");
+                putIfPresent(formData, account, "address", "BillingStreet");
+                putIfPresent(formData, account, "industry");
+                
+                if (account.containsKey("AnnualRevenue") && account.get("AnnualRevenue") != null) {
+                    formData.put("annualRevenue", account.get("AnnualRevenue").toString());
+                }
+                if (account.containsKey("NumberOfEmployees") && account.get("NumberOfEmployees") != null) {
+                    formData.put("numberOfEmployees", account.get("NumberOfEmployees").toString());
+                }
+                
+                putIfPresent(formData, account, "description");
+                putIfPresent(formData, account, "website");
+                
+                // 地址字段
+                if (account.containsKey("BillingStreet") && account.get("BillingStreet") != null) {
+                    formData.put("billingStreet", account.get("BillingStreet"));
+                }
+                if (account.containsKey("BillingCity") && account.get("BillingCity") != null) {
+                    formData.put("billingCity", account.get("BillingCity"));
+                }
+                if (account.containsKey("BillingState") && account.get("BillingState") != null) {
+                    formData.put("billingState", account.get("BillingState"));
+                }
+                if (account.containsKey("BillingPostalCode") && account.get("BillingPostalCode") != null) {
+                    formData.put("billingPostalCode", account.get("BillingPostalCode"));
+                }
+                if (account.containsKey("BillingCountry") && account.get("BillingCountry") != null) {
+                    formData.put("billingCountry", account.get("BillingCountry"));
+                }
             }
             
             logger.info("Loaded account data from Salesforce: {}", formData.get("accountName"));
             
         } catch (Exception e) {
-            logger.error("Failed to load account from Salesforce", e);
-            // 返回空数据，让用户手动填写
+            logger.error("Failed to load account from Salesforce: {}", e.getMessage(), e);
+            // 返回空的 formData（已初始化为空字符串）
         }
         
         return formData;
+    }
+    
+    /**
+     * 安全地从 source Map 复制字段到 target Map
+     * @param target 目标 Map
+     * @param source 源 Map
+     * @param fieldName 字段名
+     */
+    private void putIfPresent(Map<String, Object> target, Map<String, Object> source, String fieldName) {
+        putIfPresent(target, source, fieldName, fieldName);
+    }
+    
+    /**
+     * 安全地从 source Map 复制字段到 target Map（支持不同的字段名映射）
+     * @param target 目标 Map
+     * @param source 源 Map
+     * @param targetField 目标字段名
+     * @param sourceField 源字段名
+     */
+    private void putIfPresent(Map<String, Object> target, Map<String, Object> source, 
+                             String targetField, String sourceField) {
+        if (source.containsKey(sourceField)) {
+            Object value = source.get(sourceField);
+            if (value != null) {
+                target.put(targetField, value.toString());
+            } else {
+                target.put(targetField, "");
+            }
+        }
     }
     
     /**
