@@ -130,36 +130,36 @@ public class EmbedController {
         Map<String, Object> formData = new HashMap<>();
         
         try {
-            TokenInfo token = oauthClient.getAccessToken();
-            JsonNode account = salesforceApiService.getAccountById(recordId);
+            // 直接从 SalesforceApiService 获取 Account 数据（返回 Map）
+            Map<String, Object> account = salesforceApiService.getAccountById(recordId);
             
             // 提取字段值
-            if (account.has("Name")) {
-                formData.put("accountName", account.get("Name").asText());
+            if (account.containsKey("Name")) {
+                formData.put("accountName", account.get("Name"));
             }
-            if (account.has("AccountNumber")) {
-                formData.put("accountNumber", account.get("AccountNumber").asText());
+            if (account.containsKey("AccountNumber")) {
+                formData.put("accountNumber", account.get("AccountNumber"));
             }
-            if (account.has("Phone")) {
-                formData.put("phone", account.get("Phone").asText());
+            if (account.containsKey("Phone")) {
+                formData.put("phone", account.get("Phone"));
             }
-            if (account.has("BillingStreet")) {
-                formData.put("address", account.get("BillingStreet").asText());
+            if (account.containsKey("BillingStreet")) {
+                formData.put("address", account.get("BillingStreet"));
             }
-            if (account.has("Industry")) {
-                formData.put("industry", account.get("Industry").asText());
+            if (account.containsKey("Industry")) {
+                formData.put("industry", account.get("Industry"));
             }
-            if (account.has("AnnualRevenue")) {
-                formData.put("annualRevenue", account.get("AnnualRevenue").asText());
+            if (account.containsKey("AnnualRevenue")) {
+                formData.put("annualRevenue", account.get("AnnualRevenue").toString());
             }
-            if (account.has("NumberOfEmployees")) {
-                formData.put("numberOfEmployees", account.get("NumberOfEmployees").asText());
+            if (account.containsKey("NumberOfEmployees")) {
+                formData.put("numberOfEmployees", account.get("NumberOfEmployees"));
             }
-            if (account.has("Description")) {
-                formData.put("description", account.get("Description").asText());
+            if (account.containsKey("Description")) {
+                formData.put("description", account.get("Description"));
             }
-            if (account.has("Website")) {
-                formData.put("website", account.get("Website").asText());
+            if (account.containsKey("Website")) {
+                formData.put("website", account.get("Website"));
             }
             
             logger.info("Loaded account data from Salesforce: {}", formData.get("accountName"));
