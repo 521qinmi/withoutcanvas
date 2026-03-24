@@ -233,13 +233,19 @@ public class EmbedController {
     }
     
     /**
-     * 保存表单数据到文件
+     * Save form data to file
      */
     @PostMapping("/form/save")
     @ResponseBody
-    public ResponseEntity<?> saveFormData(@RequestBody Map<String, Object> formData) {
+    public ResponseEntity<?> saveFormData(@RequestBody Map<String, Object> formData, HttpServletResponse response) {
         logger.info("========== Form Save Request ==========");
         logger.info("Received form data for saving: {}", formData);
+        
+        // Add CORS headers to allow requests from Salesforce LWC
+        response.setHeader("Access-Control-Allow-Origin", "*");
+        response.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+        response.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        response.setHeader("Access-Control-Allow-Credentials", "true");
         
         try {
             // Validate request
@@ -289,47 +295,41 @@ public class EmbedController {
         } catch (Exception e) {
             logger.error("❌ Error saving form data: {}", e.getMessage(), e);
             logger.info("==========================================");
+            // Return specific error message for debugging
             return ResponseEntity.status(500).body("{\"success\": false, \"error\": \"Server error: " + e.getMessage() + "\"}");
         }
     }
-    
+
     /**
-     * 检查是否有已保存的数据
+     * Handle OPTIONS preflight requests for CORS
+     */
+    @RequestMapping(value = "/form/save", method = RequestMethod.OPTIONS)
+    @ResponseBody
+    public ResponseEntity<?> handlePreflight() {
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Check if there is saved data
      */
     @GetMapping("/form/check-saved")
     @ResponseBody
     public ResponseEntity<?> checkSavedData(@RequestParam String recordId) {
-        logger.info("Checking saved data for recordId: {}", recordId);
-        
         try {
             boolean hasData = fileStorageService.hasSavedData(recordId);
-            Map<String, Object> responseData = new HashMap<>();
-            responseData.put("hasData", hasData);
-            responseData.put("recordId", recordId);
-            
-            if (hasData) {
-                // Load the saved data to return it
-                Map<String, Object> savedData = fileStorageService.loadAccountData(recordId);
-                responseData.put("savedData", savedData);
-                responseData.put("message", "Found saved data");
-            } else {
-                responseData.put("message", "No saved data found");
-            }
-            
-            logger.info("Check result: hasData={}, recordId={}", hasData, recordId);
-            
-            return ResponseEntity.ok(responseData);
-        } catch (Exception e) {
-            logger.error("Error checking saved data", e);
-            return ResponseEntity.status(500).body(Map.of(
-                "error", e.getMessage(),
+            return ResponseEntity.ok(Map.of(
+                "hasData", hasData,
                 "recordId", recordId
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of(
+                "error", e.getMessage()
             ));
         }
     }
     
     /**
-     * 测试保存端点 - 用于调试
+     * Test save endpoint - for debugging
      */
     @PostMapping("/form/test-save")
     @ResponseBody
