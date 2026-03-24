@@ -65,6 +65,15 @@ public class EmbedController {
         
         logger.info("Form page request - recordId: {}", recordId);
         
+        // 处理可能的重复 recordId (如 "001dL00000OmpU2QAJ,001dL00000OmpU2QAJ")
+        if (recordId != null && recordId.contains(",")) {
+            String[] ids = recordId.split(",");
+            recordId = ids[0].trim();
+            logger.warn("Detected duplicate recordId in URL, using first one: {}", recordId);
+        }
+        
+        logger.info("Cleaned recordId: {}", recordId);
+        
         // 确保 headers 正确设置（用于 iframe 嵌入）
         response.setHeader("X-Frame-Options", "ALLOWALL");
         response.setHeader("Content-Security-Policy", "frame-ancestors *");
@@ -229,37 +238,58 @@ public class EmbedController {
     @PostMapping("/form/save")
     @ResponseBody
     public ResponseEntity<?> saveFormData(@RequestBody Map<String, Object> formData) {
+        logger.info("========== Form Save Request ==========");
         logger.info("Received form data for saving: {}", formData);
         
         try {
+            // Validate request
             if (formData == null) {
                 logger.error("Form data is null");
                 return ResponseEntity.badRequest().body("{\"success\": false, \"error\": \"Form data is required\"}");
+            }
+            
+            if (formData.isEmpty()) {
+                logger.error("Form data is empty");
+                return ResponseEntity.badRequest().body("{\"success\": false, \"error\": \"Form data cannot be empty\"}");
             }
             
             String recordId = (String) formData.get("sfRecordId");
             logger.info("Extracted recordId: {}", recordId);
             
             if (recordId == null || recordId.isEmpty()) {
-                logger.error("Record ID is missing");
+                logger.error("Record ID is missing from formData keys: {}", formData.keySet());
                 return ResponseEntity.badRequest().body("{\"success\": false, \"error\": \"Record ID is required\"}");
             }
             
-            // 保存到文件
+            // Validate recordId format (should start with 001 for Account)
+            if (!recordId.startsWith("001")) {
+                logger.warn("Record ID does not start with 001 (Account prefix): {}", recordId);
+            }
+            
+            // Add metadata
+            formData.put("savedAt", new java.util.Date().toString());
+            formData.put("lastModifiedBy", "Java App");
+            formData.put("source", "FileStorage");
+            
+            // Save to file
             boolean saved = fileStorageService.saveAccountData(recordId, formData);
             logger.info("Save result: {}", saved);
             
             if (saved) {
-                logger.info("Successfully saved form data for recordId: {}", recordId);
-                return ResponseEntity.ok("{\"success\": true, \"message\": \"Data saved successfully\", \"recordId\": \"" + recordId + "\"}");
+                logger.info("✅ Successfully saved form data for recordId: {}", recordId);
+                logger.info("Saved fields count: {}", formData.size());
+                logger.info("==========================================");
+                return ResponseEntity.ok("{\"success\": true, \"message\": \"Data saved successfully\", \"recordId\": \"" + recordId + "\", \"fieldsCount\": " + formData.size() + "}");
             } else {
-                logger.error("Failed to save data for recordId: {}", recordId);
-                return ResponseEntity.status(500).body("{\"success\": false, \"error\": \"Failed to save data\"}");
+                logger.error("❌ Failed to save data for recordId: {}", recordId);
+                logger.info("==========================================");
+                return ResponseEntity.status(500).body("{\"success\": false, \"error\": \"Failed to save data to file storage\"}");
             }
             
         } catch (Exception e) {
-            logger.error("Error saving form data", e);
-            return ResponseEntity.status(500).body("{\"success\": false, \"error\": \"" + e.getMessage() + "\"}");
+            logger.error("❌ Error saving form data: {}", e.getMessage(), e);
+            logger.info("==========================================");
+            return ResponseEntity.status(500).body("{\"success\": false, \"error\": \"Server error: " + e.getMessage() + "\"}");
         }
     }
     
@@ -269,15 +299,31 @@ public class EmbedController {
     @GetMapping("/form/check-saved")
     @ResponseBody
     public ResponseEntity<?> checkSavedData(@RequestParam String recordId) {
+        logger.info("Checking saved data for recordId: {}", recordId);
+        
         try {
             boolean hasData = fileStorageService.hasSavedData(recordId);
-            return ResponseEntity.ok(Map.of(
-                "hasData", hasData,
-                "recordId", recordId
-            ));
+            Map<String, Object> responseData = new HashMap<>();
+            responseData.put("hasData", hasData);
+            responseData.put("recordId", recordId);
+            
+            if (hasData) {
+                // Load the saved data to return it
+                Map<String, Object> savedData = fileStorageService.loadAccountData(recordId);
+                responseData.put("savedData", savedData);
+                responseData.put("message", "Found saved data");
+            } else {
+                responseData.put("message", "No saved data found");
+            }
+            
+            logger.info("Check result: hasData={}, recordId={}", hasData, recordId);
+            
+            return ResponseEntity.ok(responseData);
         } catch (Exception e) {
+            logger.error("Error checking saved data", e);
             return ResponseEntity.status(500).body(Map.of(
-                "error", e.getMessage()
+                "error", e.getMessage(),
+                "recordId", recordId
             ));
         }
     }
