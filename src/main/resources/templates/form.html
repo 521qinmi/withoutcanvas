@@ -241,13 +241,18 @@
             <div class="card-body">
                 <!-- Status Bar -->
                 <div th:if="${mode == 'edit'}" class="status-bar has-data">
-                    <strong>✅ Data Loaded:</strong> Showing saved information from local storage
+                    <strong>✅ Data Loaded:</strong> Showing saved information from file storage (Record ID: <span th:text="${recordId}">...</span>)
                 </div>
                 <div th:if="${mode == 'create'}" class="status-bar">
-                    <strong>ℹ️ New Record:</strong> Data loaded from Salesforce. Fill in additional details and save.
+                    <strong>ℹ️ New Record:</strong> Data loaded from Salesforce. Fill in additional details and save. (Record ID: <span th:text="${recordId}">...</span>)
                 </div>
                 
-                <!-- Success/Error Messages -->
+                <!-- Error Messages -->
+                <div th:if="${error}" class="alert alert-error">
+                    <strong>⚠️ Warning:</strong> <span th:text="${error}">Error message</span>
+                </div>
+                
+                <!-- Success/Error Messages (Dynamic) -->
                 <div id="successMessage" class="alert alert-success" style="display: none;"></div>
                 <div id="errorMessage" class="alert alert-error" style="display: none;"></div>
                 
@@ -445,11 +450,19 @@
                 // Send to all trusted origins
                 config.trustedOrigins.forEach(origin => {
                     if (origin !== window.location.origin) {
-                        window.parent.postMessage(message, origin);
+                        try {
+                            window.parent.postMessage(message, origin);
+                        } catch (e) {
+                            console.error('Failed to post to origin', origin, e);
+                        }
                     }
                 });
                 // Also send to current origin
-                window.parent.postMessage(message, '*');
+                try {
+                    window.parent.postMessage(message, '*');
+                } catch (e) {
+                    console.error('Failed to post to *', e);
+                }
                 
                 if (config.debug) {
                     console.log('Sent to LWC:', message);
@@ -545,8 +558,73 @@
                     // LWC shows/hides loading indicator
                     // Can implement loading overlay here
                     break;
+                
+                // Handle init message from LWC with account data
+                case 'init':
+                    console.log('Received init message from LWC:', message);
+                    if (message.recordId) {
+                        config.recordId = message.recordId;
+                        console.log('Updated recordId from init message:', config.recordId);
+                    }
+                    // If we have defaults from LWC, use them to populate form
+                    if (message.defaults) {
+                        console.log('Received account defaults from LWC:', message.defaults);
+                        populateFormFromDefaults(message.defaults);
+                    }
+                    break;
+                    
+                // Handle account data update from LWC
+                case 'accountData':
+                    console.log('Received account data from LWC:', message.data);
+                    if (message.data) {
+                        populateFormFromDefaults(message.data);
+                    }
+                    break;
             }
         });
+        
+        /**
+         * Populate form fields from Account defaults object
+         */
+        function populateFormFromDefaults(defaults) {
+            console.log('Populating form with defaults:', defaults);
+            
+            try {
+                // Basic fields
+                if (defaults.name && !document.getElementById('accountName').value) {
+                    document.getElementById('accountName').value = defaults.name;
+                }
+                if (defaults.accountNumber && !document.getElementById('accountNumber').value) {
+                    document.getElementById('accountNumber').value = defaults.accountNumber;
+                }
+                if (defaults.phone && !document.getElementById('phone').value) {
+                    document.getElementById('phone').value = defaults.phone;
+                }
+                
+                // Billing address fields
+                if (defaults.billingAddress) {
+                    if (defaults.billingAddress.street && !document.getElementById('billingStreet').value) {
+                        document.getElementById('billingStreet').value = defaults.billingAddress.street;
+                    }
+                    if (defaults.billingAddress.city && !document.getElementById('billingCity').value) {
+                        document.getElementById('billingCity').value = defaults.billingAddress.city;
+                    }
+                    if (defaults.billingAddress.state && !document.getElementById('billingState').value) {
+                        document.getElementById('billingState').value = defaults.billingAddress.state;
+                    }
+                    if (defaults.billingAddress.postalCode && !document.getElementById('billingPostalCode').value) {
+                        document.getElementById('billingPostalCode').value = defaults.billingAddress.postalCode;
+                    }
+                    if (defaults.billingAddress.country && !document.getElementById('billingCountry').value) {
+                        document.getElementById('billingCountry').value = defaults.billingAddress.country;
+                    }
+                }
+                
+                console.log('Form population completed');
+            } catch (e) {
+                console.error('Error populating form:', e);
+            }
+        }
         
         // Notify LWC that form is ready after a short delay
         setTimeout(notifyReady, 500);
@@ -572,9 +650,19 @@
                 data.savedAt = new Date().toISOString();
                 data.savedBy = 'Java App';
                 
+                console.log('========== Form Submission ==========');
                 console.log('Saving data:', data);
+                console.log('Record ID:', config.recordId);
+                console.log('Mode:', config.mode);
+                console.log('Has Saved Data:', config.hasSavedData);
+                
+                // Validate data before sending
+                if (!data.sfRecordId) {
+                    throw new Error('Record ID is missing');
+                }
                 
                 // Send to backend
+                console.log('Sending POST request to /form/save...');
                 const response = await fetch('/form/save', {
                     method: 'POST',
                     headers: {
@@ -583,7 +671,28 @@
                     body: JSON.stringify(data)
                 });
                 
-                const result = await response.json();
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers.get('content-type'));
+                
+                // Check if response is OK
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Server returned non-OK status:', response.status, errorText);
+                    throw new Error(`Server error: ${response.status} - ${errorText}`);
+                }
+                
+                // Try to parse JSON
+                let result;
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    result = await response.json();
+                } else {
+                    const textResponse = await response.text();
+                    console.error('Non-JSON response:', textResponse);
+                    throw new Error('Server returned non-JSON response');
+                }
+                
+                console.log('Parsed result:', result);
                 
                 if (result.success) {
                     // Show success message
@@ -608,12 +717,17 @@
                         successMsg.style.display = 'none';
                     }, 3000);
                     
+                    console.log('✅ Save completed successfully');
+                    console.log('==========================================');
+                    
                 } else {
+                    console.error('Save failed with error:', result.error);
                     throw new Error(result.error || 'Failed to save data');
                 }
                 
             } catch (error) {
-                console.error('Save error:', error);
+                console.error('❌ Save error:', error);
+                console.error('Error stack:', error.stack);
                 
                 // Show error message
                 const errorMsg = document.getElementById('errorMessage');
@@ -625,6 +739,8 @@
                 
                 // Notify LWC
                 notifySaveError(error.message);
+                
+                console.log('==========================================');
                 
             } finally {
                 saveBtn.disabled = false;
@@ -698,7 +814,65 @@
             console.log('Has Saved Data:', config.hasSavedData);
             console.log('Current URL:', window.location.href);
             console.log('Parent Origin:', window.parent !== window ? 'In iframe' : 'Not in iframe');
+            console.log('========================');
         }
+        
+        // ========== Testing Utilities ==========
+        
+        /**
+         * Test function to verify save endpoint is working
+         */
+        async function testSaveEndpoint() {
+            console.log('Testing save endpoint...');
+            
+            const testData = {
+                sfRecordId: config.recordId,
+                accountName: 'Test Account ' + Date.now(),
+                phone: '(555) 123-4567',
+                test: true
+            };
+            
+            try {
+                const response = await fetch('/form/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testData)
+                });
+                
+                console.log('Test save response status:', response.status);
+                const result = await response.json();
+                console.log('Test save result:', result);
+                
+                return result;
+            } catch (error) {
+                console.error('Test save failed:', error);
+                throw error;
+            }
+        }
+        
+        /**
+         * Test function to check if data was saved
+         */
+        async function checkIfDataExists() {
+            console.log('Checking if data exists for recordId:', config.recordId);
+            
+            try {
+                const response = await fetch(`/form/check-saved?recordId=${config.recordId}`);
+                const result = await response.json();
+                console.log('Check saved data result:', result);
+                
+                return result;
+            } catch (error) {
+                console.error('Check saved data failed:', error);
+                throw error;
+            }
+        }
+        
+        // Expose test functions globally for browser console access
+        window.testSaveEndpoint = testSaveEndpoint;
+        window.checkIfDataExists = checkIfDataExists;
+        
+        console.log('💡 Tip: Use testSaveEndpoint() and checkIfDataExists() in console to test functionality');
     </script>
 </body>
 </html>
