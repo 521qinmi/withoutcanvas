@@ -5,12 +5,13 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.header.writers.frameoptions.XFrameOptionsHeaderWriter;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -18,39 +19,51 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-            .cors().and()
-            .csrf().disable()
-            .authorizeRequests()
-                .antMatchers("/", "/embed", "/form", "/api/**", "/health", "/test.html", 
-                           "/diag/**", "/debug/**", "/test-auth/**").permitAll()
-                .anyRequest().authenticated()
-            .and()
-            .headers()
-                .addHeaderWriter(new XFrameOptionsHeaderWriter(
-                    XFrameOptionsHeaderWriter.XFrameOptionsMode.SAMEORIGIN))
-                .frameOptions().disable();  // 关键：禁用 X-Frame-Options
+        // Configure CORS
+        CorsConfigurationSource corsConfigurationSource = getCorsConfigurationSource();
         
+        http
+            // Enable CORS configuration
+            .cors(cors -> cors.configurationSource(corsConfigurationSource))
+            // Disable CSRF as we are using stateless API calls and iframe embedding
+            .csrf(csrf -> csrf.disable())
+            // Configure authorization rules
+            .authorizeHttpRequests(auth -> auth
+                // Allow anonymous access to form APIs
+                .requestMatchers("/form/**").permitAll()
+                // Explicitly allow test-save endpoint (added per request)
+                .requestMatchers("/form/test-save").permitAll()
+                // Allow anonymous access to embed pages and root
+                .requestMatchers("/embed", "/", "/index.html", "/css/**", "/js/**").permitAll()
+                // Allow all other requests for now (adjust based on production needs)
+                .anyRequest().permitAll()
+            )
+            // Set session management to stateless
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            // Disable default login page
+            .formLogin(form -> form.disable())
+            .httpBasic(basic -> basic.disable());
+
         return http.build();
     }
 
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+    /**
+     * Define CORS configuration to allow all origins for specific paths
+     */
+    private CorsConfigurationSource getCorsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList(
-            "https://ibm112-dev-ed.develop.lightning.force.com",
-            "https://ibm112-dev-ed.develop.my.salesforce.com",
-            "https://withoutcanvas-production.up.railway.app",
-            "https://withoutcanvas.onrender.com",
-            "*"  // 开发环境允许所有来源
-        ));
+        configuration.setAllowedOrigins(List.of("*"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
-        configuration.setAllowCredentials(true);
+        configuration.setAllowedHeaders(Arrays.asList("Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"));
+        configuration.setAllowCredentials(false);
         configuration.setMaxAge(3600L);
-        
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
+        // Apply CORS to form endpoints
+        source.registerCorsConfiguration("/form/**", configuration);
+        // Apply CORS to embed page
+        source.registerCorsConfiguration("/embed", configuration);
+        
         return source;
     }
 }
