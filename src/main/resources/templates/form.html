@@ -666,7 +666,8 @@
                 const response = await fetch('/form/save', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + localStorage.getItem('token') // 添加认证头
                     },
                     body: JSON.stringify(data)
                 });
