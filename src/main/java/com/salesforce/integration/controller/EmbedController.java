@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import javax.servlet.http.HttpServletResponse;
-
+import org.springframework.http.HttpStatus;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -287,7 +287,7 @@ public class EmbedController {
                 logger.info("✅ Successfully saved form data for recordId: {}", recordId);
                 logger.info("Saved fields count: {}", formData.size());
                 logger.info("==========================================");
-                return ResponseEntity.ok.contentType(MediaType.APPLICATION_JSON).body("{\"success\": true, \"message\": \"Data saved successfully\", \"recordId\": \"" + recordId + "\", \"fieldsCount\": " + formData.size() + "}");
+                return ResponseEntity.status(HttpStatus.OK).contentType(MediaType.APPLICATION_JSON).body("{\"success\": true, \"message\": \"Data saved successfully\", \"recordId\": \"" + recordId + "\", \"fieldsCount\": " + formData.size() + "}");
             } else {
                 logger.error("❌ Failed to save data for recordId: {}", recordId);
                 logger.info("==========================================");
