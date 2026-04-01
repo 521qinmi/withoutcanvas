@@ -302,12 +302,19 @@ public class EmbedController {
         }
     }
 
+    
     /**
-     * Handle OPTIONS preflight requests for CORS
+     * Handle OPTIONS preflight requests for CORS explicitly to avoid 403
      */
     @RequestMapping(value = "/form/save", method = RequestMethod.OPTIONS)
     @ResponseBody
-    public ResponseEntity<?> handlePreflight() {
+    public ResponseEntity<?> handlePreflight(HttpServletResponse response) {
+        logger.debug("Handling OPTIONS preflight request for /form/save");
+        response.setHeader("Access-Control-Allow-Origin", "*");
+        response.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+        response.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+        response.setHeader("Access-Control-Allow-Credentials", "true");
+        response.setHeader("Access-Control-Max-Age", "3600");
         return ResponseEntity.ok().build();
     }
 
