@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Controller
-@CrossOrigin(origins = "*") // Add global CORS support for this controller
 public class EmbedController {
     private static final Logger logger = LoggerFactory.getLogger(EmbedController.class);
     
@@ -240,6 +239,7 @@ public class EmbedController {
      */
     @PostMapping("/form/save")
     @ResponseBody
+    @CrossOrigin(origins = "*") // Add global CORS support for this controller
     public ResponseEntity<?> saveFormData(@RequestBody Map<String, Object> formData, HttpServletResponse response) {
         logger.info("========== Form Save Request ==========");
         logger.info("Received form data for saving: {}", formData);
