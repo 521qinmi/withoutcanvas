@@ -238,7 +238,6 @@ public class EmbedController {
      * Save form data to file
      */
     @PostMapping("/form/save")
-    @PreAuthorize("permitAll()") // 允许所有用户访问
     @ResponseBody
     public ResponseEntity<?> saveFormData(@RequestBody Map<String, Object> formData, HttpServletResponse response) {
         logger.info("========== Form Save Request ==========");
