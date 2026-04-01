@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Controller
+@CrossOrigin(origins = "*") // Add global CORS support for this controller
 public class EmbedController {
     private static final Logger logger = LoggerFactory.getLogger(EmbedController.class);
     
