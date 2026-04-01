@@ -239,7 +239,6 @@ public class EmbedController {
      */
     @PostMapping("/form/save")
     @ResponseBody
-    @CrossOrigin(origins = "*") // Add global CORS support for this controller
     public ResponseEntity<?> saveFormData(@RequestBody Map<String, Object> formData, HttpServletResponse response) {
         logger.info("========== Form Save Request ==========");
         logger.info("Received form data for saving: {}", formData);
@@ -288,18 +287,18 @@ public class EmbedController {
                 logger.info("✅ Successfully saved form data for recordId: {}", recordId);
                 logger.info("Saved fields count: {}", formData.size());
                 logger.info("==========================================");
-                return ResponseEntity.ok("{\"success\": true, \"message\": \"Data saved successfully\", \"recordId\": \"" + recordId + "\", \"fieldsCount\": " + formData.size() + "}");
+                return ResponseEntity.ok.contentType(MediaType.APPLICATION_JSON)("{\"success\": true, \"message\": \"Data saved successfully\", \"recordId\": \"" + recordId + "\", \"fieldsCount\": " + formData.size() + "}");
             } else {
                 logger.error("❌ Failed to save data for recordId: {}", recordId);
                 logger.info("==========================================");
-                return ResponseEntity.status(500).body("{\"success\": false, \"error\": \"Failed to save data to file storage\"}");
+                return ResponseEntity.status(500).contentType(MediaType.APPLICATION_JSON).body("{\"success\": false, \"error\": \"Failed to save data to file storage\"}");
             }
             
         } catch (Exception e) {
             logger.error("❌ Error saving form data: {}", e.getMessage(), e);
             logger.info("==========================================");
             // Return specific error message for debugging
-            return ResponseEntity.status(500).body("{\"success\": false, \"error\": \"Server error: " + e.getMessage() + "\"}");
+            return ResponseEntity.status(500).contentType(MediaType.APPLICATION_JSON).body("{\"success\": false, \"error\": \"Server error: " + e.getMessage() + "\"}");
         }
     }
 
