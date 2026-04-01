@@ -287,7 +287,7 @@ public class EmbedController {
                 logger.info("✅ Successfully saved form data for recordId: {}", recordId);
                 logger.info("Saved fields count: {}", formData.size());
                 logger.info("==========================================");
-                return ResponseEntity.ok.contentType(MediaType.APPLICATION_JSON)("{\"success\": true, \"message\": \"Data saved successfully\", \"recordId\": \"" + recordId + "\", \"fieldsCount\": " + formData.size() + "}");
+                return ResponseEntity.ok.contentType(MediaType.APPLICATION_JSON).body("{\"success\": true, \"message\": \"Data saved successfully\", \"recordId\": \"" + recordId + "\", \"fieldsCount\": " + formData.size() + "}");
             } else {
                 logger.error("❌ Failed to save data for recordId: {}", recordId);
                 logger.info("==========================================");
