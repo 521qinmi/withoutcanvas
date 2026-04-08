@@ -143,12 +143,12 @@ public class EmbedController {
         formData.put("accountName", "");
         formData.put("accountNumber", "");
         formData.put("phone", "");
-        formData.put("address", "");
+        formData.put("website", "");
         formData.put("industry", "");
         formData.put("annualRevenue", "");
         formData.put("numberOfEmployees", "");
+        formData.put("ownership", "");
         formData.put("description", "");
-        formData.put("website", "");
         formData.put("billingStreet", "");
         formData.put("billingCity", "");
         formData.put("billingState", "");
@@ -156,17 +156,22 @@ public class EmbedController {
         formData.put("billingCountry", "");
         
         try {
-            // 直接从 SalesforceApiService 获取 Account 数据（返回 Map）
+            // 从 SalesforceApiService 获取 Account 数据
             Map<String, Object> account = salesforceApiService.getAccountById(recordId);
             
-            // 提取字段值（安全地获取，避免 null）
             if (account != null) {
-                putIfPresent(formData, account, "accountName");
-                putIfPresent(formData, account, "accountNumber");
-                putIfPresent(formData, account, "phone");
-                putIfPresent(formData, account, "address", "BillingStreet");
-                putIfPresent(formData, account, "industry");
+                logger.info("Retrieved account from Salesforce: {}", account.get("Name"));
                 
+                // 映射基本字段（Salesforce字段名 -> 表单字段名）
+                mapField(formData, account, "accountName", "Name");
+                mapField(formData, account, "accountNumber", "AccountNumber");
+                mapField(formData, account, "phone", "Phone");
+                mapField(formData, account, "website", "Website");
+                mapField(formData, account, "industry", "Industry");
+                mapField(formData, account, "ownership", "Ownership");
+                mapField(formData, account, "description", "Description");
+                
+                // 数值字段
                 if (account.containsKey("AnnualRevenue") && account.get("AnnualRevenue") != null) {
                     formData.put("annualRevenue", account.get("AnnualRevenue").toString());
                 }
@@ -174,35 +179,34 @@ public class EmbedController {
                     formData.put("numberOfEmployees", account.get("NumberOfEmployees").toString());
                 }
                 
-                putIfPresent(formData, account, "description");
-                putIfPresent(formData, account, "website");
-                
                 // 地址字段
-                if (account.containsKey("BillingStreet") && account.get("BillingStreet") != null) {
-                    formData.put("billingStreet", account.get("BillingStreet"));
-                }
-                if (account.containsKey("BillingCity") && account.get("BillingCity") != null) {
-                    formData.put("billingCity", account.get("BillingCity"));
-                }
-                if (account.containsKey("BillingState") && account.get("BillingState") != null) {
-                    formData.put("billingState", account.get("BillingState"));
-                }
-                if (account.containsKey("BillingPostalCode") && account.get("BillingPostalCode") != null) {
-                    formData.put("billingPostalCode", account.get("BillingPostalCode"));
-                }
-                if (account.containsKey("BillingCountry") && account.get("BillingCountry") != null) {
-                    formData.put("billingCountry", account.get("BillingCountry"));
-                }
+                mapField(formData, account, "billingStreet", "BillingStreet");
+                mapField(formData, account, "billingCity", "BillingCity");
+                mapField(formData, account, "billingState", "BillingState");
+                mapField(formData, account, "billingPostalCode", "BillingPostalCode");
+                mapField(formData, account, "billingCountry", "BillingCountry");
+                
+                logger.info("Successfully mapped {} fields from Salesforce account", formData.size());
+            } else {
+                logger.warn("No account data returned from Salesforce for recordId: {}", recordId);
             }
             
-            logger.info("Loaded account data from Salesforce: {}", formData.get("accountName"));
-            
         } catch (Exception e) {
-            logger.error("Failed to load account from Salesforce: {}", e.getMessage(), e);
-            // 返回空的 formData（已初始化为空字符串）
+            logger.error("Failed to load account from Salesforce for recordId: {}", recordId, e);
+            throw e; // 重新抛出异常，让调用者处理
         }
         
         return formData;
+    }
+    
+    /**
+     * 映射单个字段从 Salesforce 到表单
+     */
+    private void mapField(Map<String, Object> formData, Map<String, Object> account,
+                         String formFieldName, String sfFieldName) {
+        if (account.containsKey(sfFieldName) && account.get(sfFieldName) != null) {
+            formData.put(formFieldName, account.get(sfFieldName).toString());
+        }
     }
     
     /**
