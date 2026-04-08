@@ -81,35 +81,54 @@ public class SalesforceApiService {
             return null;
         }
 
-        // 使用参数化查询避免 SQL 注入
-        String soql = "SELECT Id, Name, Phone, Website, Industry, Type, Description, AnnualRevenue " +
-                 "FROM Account WHERE Id = :accountId";
+        // SOQL查询 - 包含所有需要的字段（包括地址字段）
+        String soql = "SELECT Id, Name, AccountNumber, Phone, Website, Industry, Type, Description, " +
+                     "AnnualRevenue, NumberOfEmployees, Ownership, " +
+                     "BillingStreet, BillingCity, BillingState, BillingPostalCode, BillingCountry " +
+                     "FROM Account WHERE Id = '" + accountId + "'";
     
         try {
-            JsonNode result = executeQuery(soql, accountId); // 修改：传递 accountId 作为参数
+            JsonNode result = executeQuery(soql);
         
             if (result != null && result.has("records") && result.get("records").size() > 0) {
                 JsonNode record = result.get("records").get(0);
                 
                 Map<String, Object> account = new HashMap<>();
+                // 基本信息
                 account.put("Id", getJsonProperty(record, "Id"));
                 account.put("Name", getJsonProperty(record, "Name"));
+                account.put("AccountNumber", getJsonProperty(record, "AccountNumber"));
                 account.put("Phone", getJsonProperty(record, "Phone"));
                 account.put("Website", getJsonProperty(record, "Website"));
                 account.put("Industry", getJsonProperty(record, "Industry"));
                 account.put("Type", getJsonProperty(record, "Type"));
                 account.put("Description", getJsonProperty(record, "Description"));
+                account.put("Ownership", getJsonProperty(record, "Ownership"));
                 
+                // 数值字段
                 if (record.has("AnnualRevenue") && !record.get("AnnualRevenue").isNull()) {
                     account.put("AnnualRevenue", record.get("AnnualRevenue").asDouble());
                 }
+                if (record.has("NumberOfEmployees") && !record.get("NumberOfEmployees").isNull()) {
+                    account.put("NumberOfEmployees", record.get("NumberOfEmployees").asInt());
+                }
+                
+                // 地址字段
+                account.put("BillingStreet", getJsonProperty(record, "BillingStreet"));
+                account.put("BillingCity", getJsonProperty(record, "BillingCity"));
+                account.put("BillingState", getJsonProperty(record, "BillingState"));
+                account.put("BillingPostalCode", getJsonProperty(record, "BillingPostalCode"));
+                account.put("BillingCountry", getJsonProperty(record, "BillingCountry"));
+                
+                logger.info("Successfully retrieved account: {} with {} fields",
+                           account.get("Name"), account.size());
                 
                 return account;
             } else {
                 throw new Exception("Account not found: " + accountId);
             }
         } catch (Exception e) {
-            logger.error("Query execution failed", e);
+            logger.error("Query execution failed for accountId: {}", accountId, e);
             throw e;
         }
     }
