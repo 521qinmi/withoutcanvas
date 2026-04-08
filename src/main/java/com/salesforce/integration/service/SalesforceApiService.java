@@ -133,40 +133,6 @@ public class SalesforceApiService {
         }
     }
     
-    /**
-     * 执行SOQL查询 - 支持参数化查询
-     */
-    public JsonNode executeQuery(String soql, Object... params) throws Exception {
-        TokenInfo tokenInfo = oauthClient.getAccessToken();
-        
-        // 使用 UriComponentsBuilder 构建 URL，它会自动处理编码
-        String url = UriComponentsBuilder.fromHttpUrl(tokenInfo.getInstanceUrl())
-                .path("/services/data/" + apiVersion + "/query")
-                .queryParam("q", soql)
-                .build()
-                .toUriString();
-        
-        logger.info("Original SOQL: {}", soql);
-        logger.info("Encoded URL: {}", url);
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(tokenInfo.getAccessToken());
-        
-        HttpEntity<String> request = new HttpEntity<>(headers);
-        
-        try {
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, request, String.class);
-            
-            if (response.getStatusCode().is2xxSuccessful()) {
-                return objectMapper.readTree(response.getBody());
-            } else {
-                throw new Exception("Query failed: " + response.getStatusCode() + " - " + response.getBody());
-            }
-        } catch (Exception e) {
-            logger.error("Query execution failed", e);
-            throw e;
-        }
-    }
     
     /**
      * 获取Estimate记录
