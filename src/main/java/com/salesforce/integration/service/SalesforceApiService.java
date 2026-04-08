@@ -77,28 +77,32 @@ public class SalesforceApiService {
         
         String soql = "SELECT Id, Name, Phone, Website, Industry, Type, Description, AnnualRevenue " +
                      "FROM Account WHERE Id = '" + accountId + "'";
-        
-        JsonNode result = executeQuery(soql);
-        
-        if (result != null && result.has("records") && result.get("records").size() > 0) {
-            JsonNode record = result.get("records").get(0);
+        try {
+            JsonNode result = executeQuery(soql);
             
-            Map<String, Object> account = new HashMap<>();
-            account.put("Id", getJsonProperty(record, "Id"));
-            account.put("Name", getJsonProperty(record, "Name"));
-            account.put("Phone", getJsonProperty(record, "Phone"));
-            account.put("Website", getJsonProperty(record, "Website"));
-            account.put("Industry", getJsonProperty(record, "Industry"));
-            account.put("Type", getJsonProperty(record, "Type"));
-            account.put("Description", getJsonProperty(record, "Description"));
-            
-            if (record.has("AnnualRevenue") && !record.get("AnnualRevenue").isNull()) {
-                account.put("AnnualRevenue", record.get("AnnualRevenue").asDouble());
+            if (result != null && result.has("records") && result.get("records").size() > 0) {
+                JsonNode record = result.get("records").get(0);
+                
+                Map<String, Object> account = new HashMap<>();
+                account.put("Id", getJsonProperty(record, "Id"));
+                account.put("Name", getJsonProperty(record, "Name"));
+                account.put("Phone", getJsonProperty(record, "Phone"));
+                account.put("Website", getJsonProperty(record, "Website"));
+                account.put("Industry", getJsonProperty(record, "Industry"));
+                account.put("Type", getJsonProperty(record, "Type"));
+                account.put("Description", getJsonProperty(record, "Description"));
+                
+                if (record.has("AnnualRevenue") && !record.get("AnnualRevenue").isNull()) {
+                    account.put("AnnualRevenue", record.get("AnnualRevenue").asDouble());
+                }
+                
+                return account;
+            } else {
+                throw new Exception("Account not found: " + accountId);
             }
-            
-            return account;
-        } else {
-            throw new Exception("Account not found: " + accountId);
+        } catch (Exception e) {
+            logger.error("Query execution failed", e);
+            throw e;
         }
     }
     
